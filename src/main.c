@@ -5,8 +5,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <pwd.h>
 #include <dirent.h>
+#include <errno.h>
 
 #include "../libargparse/argparse.c"
 
@@ -15,8 +17,10 @@
 #define PROGRAM_NAME "p2"
 #define PATH_MAX 4096
 
+#define P2_ERROR "[p2] [Error] "
+
 static const char *const usages[] = {
-    "p2 [list|create|remove|copy] [args]",
+    PROGRAM_NAME" [list|create|remove|copy] [args]",
     NULL,
 };
 
@@ -33,18 +37,27 @@ cmd_list(int argc, char **argv)
     char config_path[PATH_MAX] = {0};
     strcat(config_path, homedir);
     strcat(config_path, "/.config/"PROGRAM_NAME);
-    printf("Contents of %s:\n", config_path);
 
     DIR *config_dir;
     struct dirent *entity;
     config_dir = opendir(config_path);
     if (config_dir == NULL) {
-        fprintf(stderr, "Error: Could not open directory '%s'\n", config_path);
-        return 1;
-    } else {
-        // TODO: print entities
-        return 0;
+        fprintf(stderr, P2_ERROR"Could not open directory '%s'\n", config_path);
+        if (mkdir(config_path, 0700) != 0) {
+            fprintf(stderr, P2_ERROR"Could not create directory '%s' (errno = %d)\n", config_path, errno);
+            return errno;
+        }
     }
+
+    printf("Contents of %s:\n", config_path);
+    while ((entity = readdir(config_dir)) != NULL) {
+        if (strcmp(entity->d_name, ".") != 0 && strcmp(entity->d_name, "..") != 0) {
+            printf("  %s\n", entity->d_name);
+        }
+    }
+    closedir(config_dir);
+
+    return 0;
 }
 
 static struct cmd_struct commands[] = {

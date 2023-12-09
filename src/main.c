@@ -8,7 +8,6 @@
 #include <sys/stat.h>
 #include <pwd.h>
 #include <dirent.h>
-#include <errno.h>
 
 #include "../libargparse/argparse.c"
 
@@ -17,10 +16,12 @@
 #define PROGRAM_NAME "p2"
 #define PATH_MAX 4096
 
-#define P2_ERROR "[p2] [Error] "
+#define P2_ERROR "["PROGRAM_NAME"] [Error] "
 
 static const char *const usages[] = {
-    PROGRAM_NAME" [list|create|remove|copy] [args]",
+    PROGRAM_NAME" [options] [command] [args]\n\n"
+    "    Commands:\n"
+    "        list\tList passwords",
     NULL,
 };
 
@@ -42,10 +43,12 @@ cmd_list(int argc, char **argv)
     struct dirent *entity;
     config_dir = opendir(config_path);
     if (config_dir == NULL) {
-        fprintf(stderr, P2_ERROR"Could not open directory '%s'\n", config_path);
+        fprintf(stderr, P2_ERROR"Could not open directory '%s', creating new one\n", config_path);
         if (mkdir(config_path, 0700) != 0) {
-            fprintf(stderr, P2_ERROR"Could not create directory '%s' (errno = %d)\n", config_path, errno);
-            return errno;
+            fprintf(stderr, P2_ERROR"Could not create directory '%s'\n", config_path);
+            return 1;
+        } else {
+            config_dir = opendir(config_path);
         }
     }
 

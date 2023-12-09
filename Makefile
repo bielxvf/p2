@@ -1,10 +1,10 @@
 SRC = src/main.c
 BIN = p2
-CFLAGS = -Wall -Wextra -Wpedantic
+CFLAGS = -std=c18 -Wall -Wextra -Wpedantic
 
 build:
 	mkdir build
 	gcc $(SRC) $(CFLAGS) -o build/$(BIN)
 
 clean:
-	rm -rf build/*
+	rm -rf build

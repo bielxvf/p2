@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <dirent.h>
 
 #include "../libargparse/argparse.c"
 
@@ -33,8 +34,17 @@ cmd_list(int argc, char **argv)
     strcat(config_path, homedir);
     strcat(config_path, "/.config/"PROGRAM_NAME);
     printf("Contents of %s:\n", config_path);
-    // TODO: Print contents of config directory
-    return 0;
+
+    DIR *config_dir;
+    struct dirent *entity;
+    config_dir = opendir(config_path);
+    if (config_dir == NULL) {
+        fprintf(stderr, "Error: Could not open directory '%s'\n", config_path);
+        return 1;
+    } else {
+        // TODO: print entities
+        return 0;
+    }
 }
 
 static struct cmd_struct commands[] = {
@@ -53,7 +63,7 @@ main(int argc, char **argv)
     argc = argparse_parse(&argparse, argc, argv);
     if (argc < 1) {
         argparse_usage(&argparse);
-        return -1;
+        return 1;
     }
 
     struct cmd_struct *cmd = NULL;

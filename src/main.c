@@ -47,16 +47,7 @@ GetConfigPath(void)
 int
 CheckConfigExists(DIR *config_dir, const char *config_path)
 {
-    if (config_dir == NULL) {
-        PrintError(ERR "Could not open directory '%s', creating new one\n", config_path);
-        if (mkdir(config_path, 0700) != 0) {
-            PrintError(ERR "Could not create directory '%s'\n", config_path);
-            return 0;
-        } else {
-            config_dir = opendir(config_path);
-        }
-    }
-    return 1;
+
 }
 
 int
@@ -65,8 +56,14 @@ CmdList(int argc, char **argv)
     char *config_path = GetConfigPath();
     DIR *config_dir;
     config_dir = opendir(config_path);
-    if (!CheckConfigExists(config_dir, config_path)) {
-        return 1;
+    if (config_dir == NULL) {
+        PrintError(ERR "Could not open directory '%s', creating new one\n", config_path);
+        if (mkdir(config_path, 0700) != 0) {
+            PrintError(ERR "Could not create directory '%s'\n", config_path);
+            return 1;
+        } else {
+            config_dir = opendir(config_path);
+        }
     }
 
     struct dirent *entity;

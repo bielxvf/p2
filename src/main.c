@@ -10,6 +10,8 @@
 #include <pwd.h>
 #include <dirent.h>
 
+#include "./PrintError.h"
+
 #include "../libargparse/argparse.c"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
@@ -31,16 +33,6 @@ struct cmd_struct {
     int (*fn) (int, const char **);
 };
 
-void
-PrintError(const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
-}
-
-
 char *
 GetConfigPath(void)
 {
@@ -55,7 +47,6 @@ GetConfigPath(void)
 int
 CheckConfigExists(DIR *config_dir, const char *config_path)
 {
-    config_dir = opendir(config_path);
     if (config_dir == NULL) {
         PrintError(ERR "Could not open directory '%s', creating new one\n", config_path);
         if (mkdir(config_path, 0700) != 0) {
@@ -73,17 +64,20 @@ CmdList(int argc, char **argv)
 {
     char *config_path = GetConfigPath();
     DIR *config_dir;
+    config_dir = opendir(config_path);
     if (!CheckConfigExists(config_dir, config_path)) {
         return 1;
     }
 
     struct dirent *entity;
     printf("Contents of %s:\n", config_path);
-    while ((entity = readdir(config_dir)) != NULL) {
+    while ((entity = readdir(config_dir)) != NULL) { // FIXME: SOMEHOW THIS TRASH SEGFAULTS????
         if (strcmp(entity->d_name, ".") != 0 && strcmp(entity->d_name, "..") != 0) {
             printf("  %s\n", entity->d_name);
         }
     }
+
+
     closedir(config_dir);
     free(config_path);
     return 0;

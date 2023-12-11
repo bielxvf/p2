@@ -6,6 +6,7 @@ Passman 2
 make clean
 make build
 ```
+The `p2` binary will be stored under `build/`
 
 # Usage
 ```sh

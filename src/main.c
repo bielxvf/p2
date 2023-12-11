@@ -44,44 +44,76 @@ GetConfigPath(void)
     return config_path;
 }
 
-int
-CheckConfigExists(DIR *config_dir, const char *config_path)
+void
+CreateConfigDirIfNonExistant(const char *config_path)
 {
+    struct stat st = {0};
 
+    if (stat(config_path, &st) == -1) {
+        PrintError(ERR "'%s' does not exist, creating new", config_path);
+        mkdir(config_path, 0700);
+    }
+}
+
+void
+PrintContentsOfDir(char *path)
+{
+    DIR *dir = opendir(path);
+    struct dirent *entity;
+    while ((entity = readdir(dir)) != NULL) {
+        if (strcmp(entity->d_name, ".") != 0 && strcmp(entity->d_name, "..") != 0) {
+            printf("  %s\n", entity->d_name);
+        }
+    }
+    closedir(dir);
 }
 
 int
 CmdList(int argc, char **argv)
 {
+    /* We don't need argv, so we just cast it to void */
+    (void)argv;
+
+    // Check that we have no arguments
+    if (argc != 1) {
+        PrintError(ERR "Unnecessary argument(s) for subcommand 'list'");
+        PrintError(ERR "argc: %d", argc);
+        return 1;
+    }
+
     char *config_path = GetConfigPath();
-    DIR *config_dir;
-    config_dir = opendir(config_path);
-    if (config_dir == NULL) {
-        PrintError(ERR "Could not open directory '%s', creating new one\n", config_path);
-        if (mkdir(config_path, 0700) != 0) {
-            PrintError(ERR "Could not create directory '%s'\n", config_path);
-            return 1;
-        } else {
-            config_dir = opendir(config_path);
-        }
-    }
+    CreateConfigDirIfNonExistant(config_path);
 
-    struct dirent *entity;
     printf("Contents of %s:\n", config_path);
-    while ((entity = readdir(config_dir)) != NULL) { // FIXME: SOMEHOW THIS TRASH SEGFAULTS????
-        if (strcmp(entity->d_name, ".") != 0 && strcmp(entity->d_name, "..") != 0) {
-            printf("  %s\n", entity->d_name);
-        }
+    PrintContentsOfDir(config_path);
+
+    free(config_path);
+    return 0;
+}
+
+int
+CmdNew(int argc, char **argv)
+{
+    char *config_path = GetConfigPath();
+    CreateConfigDirIfNonExistant(config_path);
+
+    // Check that we have just one argument, the name of the new password
+    if (argc > 2) {
+        PrintError(ERR "Too many arguments for subcommand 'new'");
+        return 1;
+    } else if (argc < 2) {
+        PrintError(ERR "Not enough arguments for subcommand 'new'");
+        return 1;
+    } else {
     }
 
-
-    closedir(config_dir);
     free(config_path);
     return 0;
 }
 
 static struct cmd_struct commands[] = {
     { "list", CmdList },
+    { "new", CmdNew },
 };
 
 int

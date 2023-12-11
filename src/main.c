@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -16,7 +17,7 @@
 #define PROGRAM_NAME "p2"
 #define PATH_MAX 4096
 
-#define P2_ERROR "["PROGRAM_NAME"] [Error] "
+#define ERR "[ERROR] "
 
 static const char *const usages[] = {
     PROGRAM_NAME" [options] [command] [args]\n\n"
@@ -30,35 +31,53 @@ struct cmd_struct {
     int (*fn) (int, const char **);
 };
 
+void
+PrintError(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
+}
+
+
 char *
-GetConfigPath()
+GetConfigPath(void)
 {
     char *config_path = malloc(sizeof(char)*PATH_MAX);
     struct passwd *pw = getpwuid(getuid());
     const char *homedir = pw->pw_dir;
     strcat(config_path, homedir);
-    strcat(config_path, "/.config/"PROGRAM_NAME);
+    strcat(config_path, "/.config/" PROGRAM_NAME);
     return config_path;
 }
 
 int
-cmd_list(int argc, char **argv)
+CheckConfigExists(DIR *config_dir, const char *config_path)
 {
-    char *config_path = GetConfigPath();
-    GetConfigPath(config_path);
-    DIR *config_dir;
-    struct dirent *entity;
     config_dir = opendir(config_path);
     if (config_dir == NULL) {
-        fprintf(stderr, P2_ERROR"Could not open directory '%s', creating new one\n", config_path);
+        PrintError(ERR "Could not open directory '%s', creating new one\n", config_path);
         if (mkdir(config_path, 0700) != 0) {
-            fprintf(stderr, P2_ERROR"Could not create directory '%s'\n", config_path);
-            return 1;
+            PrintError(ERR "Could not create directory '%s'\n", config_path);
+            return 0;
         } else {
             config_dir = opendir(config_path);
         }
     }
+    return 1;
+}
 
+int
+CmdList(int argc, char **argv)
+{
+    char *config_path = GetConfigPath();
+    DIR *config_dir;
+    if (!CheckConfigExists(config_dir, config_path)) {
+        return 1;
+    }
+
+    struct dirent *entity;
     printf("Contents of %s:\n", config_path);
     while ((entity = readdir(config_dir)) != NULL) {
         if (strcmp(entity->d_name, ".") != 0 && strcmp(entity->d_name, "..") != 0) {
@@ -71,7 +90,7 @@ cmd_list(int argc, char **argv)
 }
 
 static struct cmd_struct commands[] = {
-    { "list", cmd_list },
+    { "list", CmdList },
 };
 
 int

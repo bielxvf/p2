@@ -30,15 +30,22 @@ struct cmd_struct {
     int (*fn) (int, const char **);
 };
 
+char *
+GetConfigPath()
+{
+    char *config_path = malloc(sizeof(char)*PATH_MAX);
+    struct passwd *pw = getpwuid(getuid());
+    const char *homedir = pw->pw_dir;
+    strcat(config_path, homedir);
+    strcat(config_path, "/.config/"PROGRAM_NAME);
+    return config_path;
+}
+
 int
 cmd_list(int argc, char **argv)
 {
-    struct passwd *pw = getpwuid(getuid());
-    const char *homedir = pw->pw_dir;
-    char config_path[PATH_MAX] = {0};
-    strcat(config_path, homedir);
-    strcat(config_path, "/.config/"PROGRAM_NAME);
-
+    char *config_path = GetConfigPath();
+    GetConfigPath(config_path);
     DIR *config_dir;
     struct dirent *entity;
     config_dir = opendir(config_path);
@@ -59,12 +66,12 @@ cmd_list(int argc, char **argv)
         }
     }
     closedir(config_dir);
-
+    free(config_path);
     return 0;
 }
 
 static struct cmd_struct commands[] = {
-    {"list", cmd_list},
+    { "list", cmd_list },
 };
 
 int

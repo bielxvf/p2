@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <pwd.h>
 #include <dirent.h>
+#include <termios.h>
 
 #include "./PrintError.h"
 
@@ -17,6 +18,7 @@
 
 #define PROGRAM_NAME "p2"
 #define PATH_MAX 4096
+#define PASSWORD_MAX 4096
 
 #define ERR "[ERROR] "
 
@@ -95,6 +97,26 @@ CmdList(int argc, char **argv)
     return 0;
 }
 
+char *
+GetPassPhrase(const char *prompt, int max)
+{
+    struct termios oldtc;
+    struct termios newtc;
+    tcgetattr(STDIN_FILENO, &oldtc);
+    newtc = oldtc;
+    newtc.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newtc);
+
+    char *p = (char *) malloc(sizeof(char)*max);
+    memset(p, 0, sizeof(char)*max);
+    printf("%s", prompt);
+    scanf("%s", p);
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldtc);
+    printf("\n");
+    return p;
+}
+
 int
 CmdNew(int argc, char **argv)
 {
@@ -125,18 +147,11 @@ CmdNew(int argc, char **argv)
         return 1;
     }
 
-    char *plaintext = (char *) malloc(sizeof(char)*PASSWORD_MAX);
-    memset(plaintext, 0, sizeof(char)*PASSWORD_MAX);
-    printf("Enter password: ");
-    scanf("%s", plaintext);
-
-    char *password = (char *) malloc(sizeof(char)*PASSWORD_MAX);
-    memset(password, 0 , sizeof(char)*PASSWORD_MAX);
-    printf("Master password: ");
-    scanf("%s", password);
+    char *plaintext = GetPassPhrase("Enter password: ", PASSWORD_MAX);
+    char *password = GetPassPhrase("Master password: ", PASSWORD_MAX);
 
     /* TODO:
-           1. Encrypt password text with Master password
+           1. Encrypt plaintext with password
            2. Save ciphertext into new_path
     */
 

@@ -56,7 +56,7 @@ CreateConfigDirIfNonExistant(const char *config_path)
 }
 
 void
-PrintContentsOfDir(char *path)
+PrintDirContents(char *path)
 {
     DIR *dir = opendir(path);
     struct dirent *entity;
@@ -85,7 +85,7 @@ CmdList(int argc, char **argv)
     CreateConfigDirIfNonExistant(config_path);
 
     printf("Contents of %s:\n", config_path);
-    PrintContentsOfDir(config_path);
+    PrintDirContents(config_path);
 
     free(config_path);
     return 0;

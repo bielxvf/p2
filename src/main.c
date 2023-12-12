@@ -2,7 +2,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -36,7 +35,7 @@ struct cmd_struct {
 char *
 GetConfigPath(void)
 {
-    char *config_path = malloc(sizeof(char)*PATH_MAX);
+    char *config_path = (char *) malloc(sizeof(char)*PATH_MAX);
     struct passwd *pw = getpwuid(getuid());
     const char *homedir = pw->pw_dir;
     strcat(config_path, homedir);
@@ -45,12 +44,12 @@ GetConfigPath(void)
 }
 
 void
-CreateConfigDirIfNonExistant(const char *config_path)
+MkConfigDir(const char *config_path) // Will create ~/.config/p2 if it doesn't exist
 {
     struct stat st = {0};
 
     if (stat(config_path, &st) == -1) {
-        PrintError(ERR "'%s' does not exist, creating new", config_path);
+        PrintError(ERR "%s does not exist, creating new", config_path);
         mkdir(config_path, 0700);
     }
 }
@@ -60,12 +59,18 @@ PrintDirContents(char *path)
 {
     DIR *dir = opendir(path);
     struct dirent *entity;
+    size_t i = 0;
+    printf("Contents of %s:\n", path);
     while ((entity = readdir(dir)) != NULL) {
         if (strcmp(entity->d_name, ".") != 0 && strcmp(entity->d_name, "..") != 0) {
             printf("  %s\n", entity->d_name);
+            i++;
         }
     }
     closedir(dir);
+    if (i == 0) {
+        PrintError(ERR "%s looks empty. Create a new password with `p2 new [NAME]`", path);
+    }
 }
 
 int
@@ -77,14 +82,13 @@ CmdList(int argc, char **argv)
     // Check that we have no arguments
     if (argc != 1) {
         PrintError(ERR "Unnecessary argument(s) for subcommand 'list'");
-        PrintError(ERR "argc: %d", argc);
         return 1;
     }
 
     char *config_path = GetConfigPath();
-    CreateConfigDirIfNonExistant(config_path);
+    MkConfigDir(config_path); // Make sure we have a config directory
 
-    printf("Contents of %s:\n", config_path);
+    // List everything in our config directory
     PrintDirContents(config_path);
 
     free(config_path);
@@ -94,9 +98,6 @@ CmdList(int argc, char **argv)
 int
 CmdNew(int argc, char **argv)
 {
-    char *config_path = GetConfigPath();
-    CreateConfigDirIfNonExistant(config_path);
-
     // Check that we have just one argument, the name of the new password
     if (argc > 2) {
         PrintError(ERR "Too many arguments for subcommand 'new'");
@@ -104,10 +105,35 @@ CmdNew(int argc, char **argv)
     } else if (argc < 2) {
         PrintError(ERR "Not enough arguments for subcommand 'new'");
         return 1;
-    } else {
     }
 
+    char *config_path = GetConfigPath();
+    MkConfigDir(config_path);
+
+    char *new_path = (char *) malloc(sizeof(char)*PATH_MAX);
+    memset(new_path, 0, sizeof(char)*PATH_MAX);
+    strcat(new_path, config_path);
+    strcat(new_path, "/");
+    strcat(new_path, argv[1]);
+    strcat(new_path, ".locked");
+
+    struct stat st;
+    if (stat(new_path, &st) == 0) {
+        PrintError(ERR "Invalid name: %s. File %s already exists", argv[1], new_path);
+        free(config_path);
+        free(new_path);
+        return 1;
+    }
+
+    /* TODO:
+           1. Get password
+           2. Get Master password
+           3. Encrypt password text with Master password
+           4. Save ciphertext into new_path
+    */
+
     free(config_path);
+    free(new_path);
     return 0;
 }
 

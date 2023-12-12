@@ -125,15 +125,25 @@ CmdNew(int argc, char **argv)
         return 1;
     }
 
+    char *plaintext = (char *) malloc(sizeof(char)*PASSWORD_MAX);
+    memset(plaintext, 0, sizeof(char)*PASSWORD_MAX);
+    printf("Enter password: ");
+    scanf("%s", plaintext);
+
+    char *password = (char *) malloc(sizeof(char)*PASSWORD_MAX);
+    memset(password, 0 , sizeof(char)*PASSWORD_MAX);
+    printf("Master password: ");
+    scanf("%s", password);
+
     /* TODO:
-           1. Get password
-           2. Get Master password
-           3. Encrypt password text with Master password
-           4. Save ciphertext into new_path
+           1. Encrypt password text with Master password
+           2. Save ciphertext into new_path
     */
 
     free(config_path);
     free(new_path);
+    free(plaintext);
+    free(password);
     return 0;
 }
 

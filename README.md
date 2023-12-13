@@ -1,6 +1,21 @@
 # p2
 Passman 2
 
+# Dependencies
+p2 depends on (monocypher)[https://monocypher.org/] to encrypt passwords
+
+## Arch
+```sh
+git clone sudo pacman https://aur.archlinux.org/monocypher.git
+cd monocypher
+makepkg -si
+```
+
+## Other distros
+I run an Arch-based distribution so I have no idea if others have a package for `monocypher` or not,
+ in any case, if you cannot find a way to install it on your distro, download the official tarball (here)[https://monocypher.org/download/]
+ and follow the instructions provided on the `Getting started` section on their (home page)[https://monocypher.org/]
+
 # Build
 ```sh
 make clean

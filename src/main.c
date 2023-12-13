@@ -10,6 +10,8 @@
 #include <dirent.h>
 #include <termios.h>
 
+#include <monocypher.h>
+
 #include "./PrintError.h"
 
 #include "../libargparse/argparse.c"
@@ -19,6 +21,7 @@
 #define PROGRAM_NAME "p2"
 #define PATH_MAX 4096
 #define PASSWORD_MAX 4096
+#define EXTENSION_LOCKED ".locked"
 
 #define ERR "[ERROR] "
 
@@ -98,7 +101,19 @@ CmdList(int argc, char **argv)
 }
 
 char *
-GetPassPhrase(const char *prompt, int max)
+GetNewPath(char *path_prefix, char *name, char *extension)
+{
+    char *path = (char *) malloc(sizeof(char)*PATH_MAX);
+    memset(path, 0, sizeof(char)*PATH_MAX);
+    strcat(path, path_prefix);
+    strcat(path, "/");
+    strcat(path, name);
+    strcat(path, extension);
+    return path;
+}
+
+char *
+GetPassPhrase(const char *prompt)
 {
     struct termios oldtc;
     struct termios newtc;
@@ -107,14 +122,14 @@ GetPassPhrase(const char *prompt, int max)
     newtc.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &newtc);
 
-    char *p = (char *) malloc(sizeof(char)*max);
-    memset(p, 0, sizeof(char)*max);
+    char *phrase = (char *) malloc(sizeof(char)*PASSWORD_MAX);
+    memset(phrase, 0, sizeof(char)*PASSWORD_MAX);
     printf("%s", prompt);
-    scanf("%s", p);
+    scanf("%s", phrase);
 
     tcsetattr(STDIN_FILENO, TCSANOW, &oldtc);
     printf("\n");
-    return p;
+    return phrase;
 }
 
 int
@@ -132,12 +147,7 @@ CmdNew(int argc, char **argv)
     char *config_path = GetConfigPath();
     MkConfigDir(config_path);
 
-    char *new_path = (char *) malloc(sizeof(char)*PATH_MAX);
-    memset(new_path, 0, sizeof(char)*PATH_MAX);
-    strcat(new_path, config_path);
-    strcat(new_path, "/");
-    strcat(new_path, argv[1]);
-    strcat(new_path, ".locked");
+    char *new_path = GetNewPath(config_path, argv[1], EXTENSION_LOCKED);
 
     struct stat st;
     if (stat(new_path, &st) == 0) {
@@ -147,18 +157,26 @@ CmdNew(int argc, char **argv)
         return 1;
     }
 
-    char *plaintext = GetPassPhrase("Enter password: ", PASSWORD_MAX);
-    char *password = GetPassPhrase("Master password: ", PASSWORD_MAX);
+    char *plaintext = GetPassPhrase("Enter password: ");
+    char *password = GetPassPhrase("Master password: ");
+
+    size_t text_size = strlen(plaintext);
+    char *cipher_text = (char *) malloc(sizeof(char)*text_size);
 
     /* TODO:
-           1. Encrypt plaintext with password
-           2. Save ciphertext into new_path
-    */
+       1. Derive KEY from password
+       2. Generate random NONCE
+       3. Generate a MAC to be stored along with the ciphertext
+       4. NULL additional data
+       5. ad_size is 0
+       6. Wipe sensitive data
+     */
 
     free(config_path);
     free(new_path);
     free(plaintext);
     free(password);
+    free(cipher_text);
     return 0;
 }
 

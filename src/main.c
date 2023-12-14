@@ -137,6 +137,7 @@ GetPassPhrase(const char *prompt)
 int
 CmdNew(int argc, char **argv)
 {
+
     // Check that we have just one argument, the name of the new password
     if (argc > 2) {
         PrintError(ERR "Too many arguments for subcommand 'new'");
@@ -145,6 +146,8 @@ CmdNew(int argc, char **argv)
         PrintError(ERR "Not enough arguments for subcommand 'new'");
         return 1;
     }
+
+
 
     char *config_path = GetConfigPath();
     MkConfigDir(config_path);
@@ -159,77 +162,58 @@ CmdNew(int argc, char **argv)
         return 1;
     }
 
-    char *plaintext = GetPassPhrase("Enter password: ");
-    char *password = GetPassPhrase("Master password: ");
-
-    /*
-    size_t text_size = strlen(plaintext);
-    unsigned char *cipher_text = (unsigned char *) malloc(sizeof(char)*text_size);
-
-    crypto_argon2_config config = {
-        .algorithm = CRYPTO_ARGON2_I,
-        .nb_blocks = 100*1000, // 100MB
-        .nb_lanes = 1,
-        .nb_passes = 3
-    };
-
-    int salt_buf_size = 256;
-    unsigned char salt_buf[salt_buf_size];
-    getrandom(salt_buf, salt_buf_size, 0);
-
-    crypto_argon2_inputs inputs = {
-        .pass = password,
-        .pass_size = strlen(password)-1,
-        .salt = salt_buf,
-        .salt_size = salt_buf_size
-    };
-
-    crypto_argon2_extras extras = {0}; // Not using extra parameters
-
-    void *work_area = malloc((size_t)config.nb_blocks * 1024);
-    if (work_area == NULL) {
-        crypto_wipe(password, sizeof(password));
-        crypto_wipe(plaintext, sizeof(plaintext));
-        PrintError(ERR "MAlloc failed to allocate work_area");
+    if (sodium_init() < 0) {
+        // Death
+        PrintError(ERR "Sodium could not init in %s", __func__);
         return 1;
     }
 
-    int hash_size = 64;
-    unsigned char hash[hash_size];
-
-    crypto_argon2(hash, hash_size, work_area, config, inputs, extras);
-
-    printf("HASH: ");
-    for (int i = 0; i < hash_size; i++) {
-        printf("%c", hash[i]);
-    }
-    printf("\n");
-    crypto_wipe(password, sizeof(password));
-    */
+    char *plaintext = GetPassPhrase("Enter password: ");
+    int plaintext_len = strlen(plaintext);
+    char *password = GetPassPhrase("Master password: ");
+    int password_len = strlen(password);
 
     unsigned char key[crypto_secretbox_KEYBYTES];
     unsigned char nonce[crypto_secretbox_NONCEBYTES];
     unsigned char ciphertext[crypto_secretbox_MACBYTES + 4];
 
-    crypto_secretbox_keygen(key);
+    unsigned char hash[crypto_generichash_BYTES];
+    crypto_generichash(hash, sizeof(hash), password, password_len, NULL, 0);
+    for (int i = 0; i < crypto_generichash_BYTES; i++) {
+        key[i] = hash[i];
+    }
+
     randombytes_buf(nonce, sizeof nonce);
-    crypto_secretbox_easy(ciphertext, "test", 4, nonce, key);
+    crypto_secretbox_easy(ciphertext, plaintext, plaintext_len, nonce, key);
 
     unsigned char decrypted[4];
-    if (crypto_secretbox_open_easy(decrypted, ciphertext, crypto_secretbox_MACBYTES + 4, nonce, key) != 0) {
+    if (crypto_secretbox_open_easy(decrypted, ciphertext, crypto_secretbox_MACBYTES + plaintext_len, nonce, key) != 0) {
         return 1;
     }
 
-    printf("Message: test\n");
+    printf("  Message:\t\t\t%s\n", plaintext);
+    printf("  Master password:\t\t%s\n", password);
 
-    printf("Ciphertext: ");
-    for (int i = 0; i < crypto_secretbox_MACBYTES + 4; i++) {
+    printf("  Key (Master password hashed):\t");
+    for (int i = 0; i < crypto_secretbox_KEYBYTES; i++) {
+        printf("%X", key[i]);
+    }
+    printf("\n");
+
+    printf("  Nonce:\t\t\t");
+    for (int i = 0; i < crypto_secretbox_NONCEBYTES; i++) {
+        printf("%X", nonce[i]);
+    }
+    printf("\n");
+
+    printf("  Ciphertext:\t\t\t");
+    for (int i = 0; i < crypto_secretbox_MACBYTES + plaintext_len; i++) {
         printf("%X", ciphertext[i]);
     }
     printf("\n");
 
-    printf("Decrypted: ");
-    for (int i = 0; i < 4; i++) {
+    printf("  Decrypted:\t\t\t");
+    for (int i = 0; i < plaintext_len; i++) {
         printf("%c", decrypted[i]);
     }
     printf("\n");

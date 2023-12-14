@@ -6,11 +6,12 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/random.h>
 #include <pwd.h>
 #include <dirent.h>
 #include <termios.h>
 
-#include <monocypher.h>
+#include <sodium.h>
 
 #include "./PrintError.h"
 
@@ -28,8 +29,8 @@
 static const char *const usages[] = {
     PROGRAM_NAME" [options] [command] [args]\n\n"
     "    Commands:\n"
-    "        list\tList passwords",
-    "        new\tCreate a new password",
+    "        list\tList passwords\n"
+    "        new\tCreate a new password\n",
     NULL,
 };
 
@@ -161,10 +162,77 @@ CmdNew(int argc, char **argv)
     char *plaintext = GetPassPhrase("Enter password: ");
     char *password = GetPassPhrase("Master password: ");
 
+    /*
     size_t text_size = strlen(plaintext);
-    char *cipher_text = (char *) malloc(sizeof(char)*text_size);
+    unsigned char *cipher_text = (unsigned char *) malloc(sizeof(char)*text_size);
+
+    crypto_argon2_config config = {
+        .algorithm = CRYPTO_ARGON2_I,
+        .nb_blocks = 100*1000, // 100MB
+        .nb_lanes = 1,
+        .nb_passes = 3
+    };
+
+    int salt_buf_size = 256;
+    unsigned char salt_buf[salt_buf_size];
+    getrandom(salt_buf, salt_buf_size, 0);
+
+    crypto_argon2_inputs inputs = {
+        .pass = password,
+        .pass_size = strlen(password)-1,
+        .salt = salt_buf,
+        .salt_size = salt_buf_size
+    };
+
+    crypto_argon2_extras extras = {0}; // Not using extra parameters
+
+    void *work_area = malloc((size_t)config.nb_blocks * 1024);
+    if (work_area == NULL) {
+        crypto_wipe(password, sizeof(password));
+        crypto_wipe(plaintext, sizeof(plaintext));
+        PrintError(ERR "MAlloc failed to allocate work_area");
+        return 1;
+    }
+
+    int hash_size = 64;
+    unsigned char hash[hash_size];
 
     crypto_argon2(hash, hash_size, work_area, config, inputs, extras);
+
+    printf("HASH: ");
+    for (int i = 0; i < hash_size; i++) {
+        printf("%c", hash[i]);
+    }
+    printf("\n");
+    crypto_wipe(password, sizeof(password));
+    */
+
+    unsigned char key[crypto_secretbox_KEYBYTES];
+    unsigned char nonce[crypto_secretbox_NONCEBYTES];
+    unsigned char ciphertext[crypto_secretbox_MACBYTES + 4];
+
+    crypto_secretbox_keygen(key);
+    randombytes_buf(nonce, sizeof nonce);
+    crypto_secretbox_easy(ciphertext, "test", 4, nonce, key);
+
+    unsigned char decrypted[4];
+    if (crypto_secretbox_open_easy(decrypted, ciphertext, crypto_secretbox_MACBYTES + 4, nonce, key) != 0) {
+        return 1;
+    }
+
+    printf("Message: test\n");
+
+    printf("Ciphertext: ");
+    for (int i = 0; i < crypto_secretbox_MACBYTES + 4; i++) {
+        printf("%X", ciphertext[i]);
+    }
+    printf("\n");
+
+    printf("Decrypted: ");
+    for (int i = 0; i < 4; i++) {
+        printf("%c", decrypted[i]);
+    }
+    printf("\n");
 
     /* TODO:
        1. Derive KEY from password
@@ -179,7 +247,6 @@ CmdNew(int argc, char **argv)
     free(new_path);
     free(plaintext);
     free(password);
-    free(cipher_text);
     return 0;
 }
 

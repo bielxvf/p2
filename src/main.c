@@ -57,7 +57,7 @@ MkConfigDir(const char *config_path) // Will create ~/.config/p2 if it doesn't e
     struct stat st = {0};
 
     if (stat(config_path, &st) == -1) {
-        PrintError(ERR "%s does not exist, creating new", config_path);
+        PrintError(INFO "%s does not exist, creating new", config_path);
         mkdir(config_path, 0700);
     }
 }

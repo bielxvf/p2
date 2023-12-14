@@ -24,7 +24,8 @@
 #define PASSWORD_MAX 4096
 #define EXTENSION_LOCKED ".locked"
 
-#define ERR "[ERROR] "
+#define ERR  "[ERROR] "
+#define INFO "[INFO]  "
 
 static const char *const usages[] = {
     PROGRAM_NAME" [options] [command] [args]\n\n"
@@ -191,32 +192,32 @@ CmdNew(int argc, char **argv)
         return 1;
     }
 
-    printf("  Message:\t\t\t%s\n", plaintext);
-    printf("  Master password:\t\t%s\n", password);
+    fprintf(stderr, INFO"Message:\t\t\t%s\n", plaintext);
+    fprintf(stderr, INFO"Master password:\t\t%s\n", password);
 
-    printf("  Key (Master password hashed):\t");
+    fprintf(stderr, INFO"Key (Master password hashed):\t");
     for (int i = 0; i < crypto_secretbox_KEYBYTES; i++) {
-        printf("%X", key[i]);
+        fprintf(stderr, "%X", key[i]);
     }
-    printf("\n");
+    fprintf(stderr, "\n");
 
-    printf("  Nonce:\t\t\t");
+    fprintf(stderr, INFO"Nonce:\t\t\t\t");
     for (int i = 0; i < crypto_secretbox_NONCEBYTES; i++) {
-        printf("%X", nonce[i]);
+        fprintf(stderr, "%X", nonce[i]);
     }
-    printf("\n");
+    fprintf(stderr, "\n");
 
-    printf("  Ciphertext:\t\t\t");
+    fprintf(stderr, INFO"Ciphertext:\t\t\t");
     for (int i = 0; i < crypto_secretbox_MACBYTES + plaintext_len; i++) {
-        printf("%X", ciphertext[i]);
+        fprintf(stderr, "%X", ciphertext[i]);
     }
-    printf("\n");
+    fprintf(stderr, "\n");
 
-    printf("  Decrypted:\t\t\t");
+    fprintf(stderr, INFO"Decrypted:\t\t\t");
     for (int i = 0; i < plaintext_len; i++) {
-        printf("%c", decrypted[i]);
+        fprintf(stderr, "%c", decrypted[i]);
     }
-    printf("\n");
+    fprintf(stderr, "\n");
 
     /* TODO:
        1. Derive KEY from password

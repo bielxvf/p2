@@ -2,7 +2,7 @@
 Passman 2
 
 # Dependencies
-p2 depends on [monocypher](https://monocypher.org/) to encrypt passwords
+[libsodium](https://libsodium.org/)
 
 ## Arch
 ```sh

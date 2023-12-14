@@ -29,6 +29,7 @@ static const char *const usages[] = {
     PROGRAM_NAME" [options] [command] [args]\n\n"
     "    Commands:\n"
     "        list\tList passwords",
+    "        new\tCreate a new password",
     NULL,
 };
 
@@ -162,6 +163,8 @@ CmdNew(int argc, char **argv)
 
     size_t text_size = strlen(plaintext);
     char *cipher_text = (char *) malloc(sizeof(char)*text_size);
+
+    crypto_argon2(hash, hash_size, work_area, config, inputs, extras);
 
     /* TODO:
        1. Derive KEY from password

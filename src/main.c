@@ -77,7 +77,7 @@ PrintDirContents(char *path)
     }
     closedir(dir);
     if (i == 0) {
-        PrintError(ERR "%s looks empty. Create a new password with `p2 new [NAME]`", path);
+        PrintError(INFO "%s looks empty. Create a new password with `p2 new [NAME]`", path);
     }
 }
 

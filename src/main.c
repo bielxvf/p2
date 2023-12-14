@@ -14,7 +14,7 @@
 
 #include "./PrintError.h"
 
-#include "../libargparse/argparse.c"
+#include "./libargparse/argparse.c"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 

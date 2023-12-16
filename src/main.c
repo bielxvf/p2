@@ -44,6 +44,7 @@ char *
 GetConfigPath(void)
 {
     char *config_path = (char *) malloc(sizeof(char)*PATH_MAX);
+    memset(config_path, 0, sizeof(char)*PATH_MAX);
     struct passwd *pw = getpwuid(getuid());
     const char *homedir = pw->pw_dir;
     strcat(config_path, homedir);
@@ -52,9 +53,11 @@ GetConfigPath(void)
 }
 
 void
-MkConfigDir(const char *config_path) // Will create ~/.config/p2 if it doesn't exist
+MkConfigDir(void) // Will create ~/.config/p2 if it doesn't exist
 {
     struct stat st = {0};
+
+    char *config_path = GetConfigPath();
 
     if (stat(config_path, &st) == -1) {
         PrintError(INFO "%s does not exist, creating new", config_path);
@@ -82,7 +85,7 @@ PrintDirContents(char *path)
 }
 
 int
-CmdList(int argc, char **argv)
+CmdList(int argc, const char **argv)
 {
     /* We don't need argv, so we just cast it to void */
     (void)argv;
@@ -93,18 +96,16 @@ CmdList(int argc, char **argv)
         return 1;
     }
 
-    char *config_path = GetConfigPath();
-    MkConfigDir(config_path); // Make sure we have a config directory
+    MkConfigDir(); // Make sure we have a config directory
 
     // List everything in our config directory
-    PrintDirContents(config_path);
+    PrintDirContents(GetConfigPath());
 
-    free(config_path);
     return 0;
 }
 
 char *
-GetNewPath(char *path_prefix, char *name, char *extension)
+GetNewPath(const char *path_prefix, const char *name, const char *extension)
 {
     char *path = (char *) malloc(sizeof(char)*PATH_MAX);
     memset(path, 0, sizeof(char)*PATH_MAX);
@@ -135,8 +136,23 @@ GetPassPhrase(const char *prompt)
     return phrase;
 }
 
+void
+WriteDataToFile(const char *path, const unsigned char *nonce, const size_t nonce_size, const unsigned char *ciphertext, const size_t ciphertext_size)
+{
+    FILE *fileptr;
+    fileptr = fopen(path, "w");
+    for (size_t i = 0; i < nonce_size; i++) {
+        fprintf(fileptr, "%X", nonce[i]);
+    }
+    fprintf(fileptr, ":");
+    for (size_t i = 0; i < ciphertext_size; i++) {
+        fprintf(fileptr, "%X", ciphertext[i]);
+    }
+    fclose(fileptr);
+}
+
 int
-CmdNew(int argc, char **argv)
+CmdNew(int argc, const char **argv)
 {
 
     // Check that we have just one argument, the name of the new password
@@ -148,100 +164,80 @@ CmdNew(int argc, char **argv)
         return 1;
     }
 
+    MkConfigDir();
 
-
-    char *config_path = GetConfigPath();
-    MkConfigDir(config_path);
-
-    char *new_path = GetNewPath(config_path, argv[1], EXTENSION_LOCKED);
+    char *new_path = GetNewPath(GetConfigPath(), argv[1], EXTENSION_LOCKED);
 
     struct stat st;
     if (stat(new_path, &st) == 0) {
         PrintError(ERR "Invalid name: %s. File %s already exists", argv[1], new_path);
-        free(config_path);
         free(new_path);
         return 1;
     }
 
+    char *plaintext = GetPassPhrase("Enter password: ");
+    char *password = GetPassPhrase("Master password: ");
+
+    size_t password_len = strlen(password);
+    size_t plaintext_len = strlen(plaintext);
+    size_t key_size = crypto_secretbox_KEYBYTES;
+    size_t nonce_size = crypto_secretbox_NONCEBYTES;
+    size_t ciphertext_size = crypto_secretbox_MACBYTES + plaintext_len;
+
+    unsigned char key[key_size];
+    unsigned char nonce[nonce_size];
+    unsigned char ciphertext[ciphertext_size];
+
     if (sodium_init() < 0) {
         // Death
         PrintError(ERR "Sodium could not init in %s", __func__);
+        free(new_path);
+        memset(plaintext, 0, sizeof(char)*plaintext_len);
+        free(plaintext);
+        memset(password, 0, sizeof(char)*password_len);
+        free(password);
         return 1;
     }
 
-    char *plaintext = GetPassPhrase("Enter password: ");
-    int plaintext_len = strlen(plaintext);
-    char *password = GetPassPhrase("Master password: ");
-    int password_len = strlen(password);
+    crypto_generichash(key, sizeof(key), (unsigned char *)password, password_len, NULL, 0);
 
-    unsigned char key[crypto_secretbox_KEYBYTES];
-    unsigned char nonce[crypto_secretbox_NONCEBYTES];
-    unsigned char ciphertext[crypto_secretbox_MACBYTES + 4];
+    randombytes_buf(nonce, sizeof(nonce));
+    crypto_secretbox_easy(ciphertext, (unsigned char *)plaintext, plaintext_len, nonce, key);
 
-    unsigned char hash[crypto_generichash_BYTES];
-    crypto_generichash(hash, sizeof(hash), password, password_len, NULL, 0);
-    for (int i = 0; i < crypto_generichash_BYTES; i++) {
-        key[i] = hash[i];
-    }
+    // Writes NONCE:CIPHERTEXT
+    WriteDataToFile(new_path, nonce, nonce_size, ciphertext, ciphertext_size);
 
-    randombytes_buf(nonce, sizeof nonce);
-    crypto_secretbox_easy(ciphertext, plaintext, plaintext_len, nonce, key);
-
-    unsigned char decrypted[4];
-    if (crypto_secretbox_open_easy(decrypted, ciphertext, crypto_secretbox_MACBYTES + plaintext_len, nonce, key) != 0) {
-        return 1;
-    }
-
-    fprintf(stderr, INFO"Message:\t\t\t%s\n", plaintext);
-    fprintf(stderr, INFO"Master password:\t\t%s\n", password);
-
-    fprintf(stderr, INFO"Key (Master password hashed):\t");
-    for (int i = 0; i < crypto_secretbox_KEYBYTES; i++) {
-        fprintf(stderr, "%X", key[i]);
-    }
-    fprintf(stderr, "\n");
-
-    fprintf(stderr, INFO"Nonce:\t\t\t\t");
-    for (int i = 0; i < crypto_secretbox_NONCEBYTES; i++) {
-        fprintf(stderr, "%X", nonce[i]);
-    }
-    fprintf(stderr, "\n");
-
-    fprintf(stderr, INFO"Ciphertext:\t\t\t");
-    for (int i = 0; i < crypto_secretbox_MACBYTES + plaintext_len; i++) {
-        fprintf(stderr, "%X", ciphertext[i]);
-    }
-    fprintf(stderr, "\n");
-
-    fprintf(stderr, INFO"Decrypted:\t\t\t");
-    for (int i = 0; i < plaintext_len; i++) {
-        fprintf(stderr, "%c", decrypted[i]);
-    }
-    fprintf(stderr, "\n");
-
-    /* TODO:
-       1. Derive KEY from password
-       2. Generate random NONCE
-       3. Generate a MAC to be stored along with the ciphertext
-       4. NULL additional data
-       5. ad_size is 0
-       6. Wipe sensitive data
-     */
-
-    free(config_path);
+    // Wipe and free
     free(new_path);
+    memset(plaintext, 0, sizeof(char)*plaintext_len);
     free(plaintext);
+    memset(password, 0, sizeof(char)*password_len);
     free(password);
     return 0;
 }
 
+int
+CmdPrint(int argc, const char **argv)
+{
+    (void)argc;
+    (void)argv;
+    /*
+    unsigned char decrypted[4];
+    if (crypto_secretbox_open_easy(decrypted, ciphertext, crypto_secretbox_MACBYTES + plaintext_len, nonce, key) != 0) {
+        return 1;
+    }
+    */
+    return 0;
+}
+
 static struct cmd_struct commands[] = {
-    { "list", CmdList },
-    { "new", CmdNew },
+    { "list",  CmdList  },
+    { "new",   CmdNew   },
+    { "print", CmdPrint },
 };
 
 int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
     struct argparse argparse;
     struct argparse_option options[] = {
@@ -256,7 +252,7 @@ main(int argc, char **argv)
     }
 
     struct cmd_struct *cmd = NULL;
-    for (int i = 0; i < ARRAY_SIZE(commands); i++) {
+    for (long unsigned int i = 0; i < ARRAY_SIZE(commands); i++) {
         if (!strcmp(commands[i].cmd, argv[0])) {
             cmd = &commands[i];
         }

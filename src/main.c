@@ -46,6 +46,16 @@ MemWipe(void *p, int len)
     memset(p, 0, len);
 }
 
+void
+FileWipe(const char *path)
+{
+    FILE *fptr = fopen(remove_path, "w");
+    for (int i = 0; i < st.st_size; i++) {
+        fprintf(fptr, "%c", 0);
+    }
+    fclose(fptr);
+}
+
 char *
 GetConfigPath(void)
 {
@@ -223,6 +233,36 @@ CmdNew(int argc, const char **argv)
 }
 
 int
+CmdRemove(int argc, const char **argv)
+{
+    // Check that we have just one argument, the name of the new password
+    if (argc > 2) {
+        PrintError(ERR "Too many arguments for subcommand 'new'");
+        return 1;
+    } else if (argc < 2) {
+        PrintError(ERR "Not enough arguments for subcommand 'new'");
+        return 1;
+    }
+
+    MkConfigDir();
+
+    char *remove_path = GetNewPath(GetConfigPath(), argv[1], EXTENSION_LOCKED);
+
+    struct stat st;
+    if (stat(remove_path, &st) != 0) {
+        PrintError(ERR "Invalid name: %s. File %s does not exist", argv[1], remove_path);
+        free(remove_path);
+        return 1;
+    } else {
+        FileWipe(remove_path);
+        remove(remove_path);
+        printf("Removed file: %s\n", remove_path);
+    }
+
+    return 0;
+}
+
+int
 CmdPrint(int argc, const char **argv)
 {
     (void)argc;
@@ -237,9 +277,10 @@ CmdPrint(int argc, const char **argv)
 }
 
 static struct cmd_struct commands[] = {
-    { "list",  CmdList  },
-    { "new",   CmdNew   },
-    { "print", CmdPrint },
+    { "list"  , CmdList   },
+    { "new"   , CmdNew    },
+    { "print" , CmdPrint  },
+    { "remove", CmdRemove },
 };
 
 int

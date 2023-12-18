@@ -235,12 +235,12 @@ CmdNew(int argc, const char **argv)
 int
 CmdRemove(int argc, const char **argv)
 {
-    // Check that we have just one argument, the name of the new password
+    // Check that we have just one argument, the name of the password we want to remove
     if (argc > 2) {
-        PrintError(ERR "Too many arguments for subcommand 'new'");
+        PrintError(ERR "Too many arguments for subcommand 'remove'");
         return 1;
     } else if (argc < 2) {
-        PrintError(ERR "Not enough arguments for subcommand 'new'");
+        PrintError(ERR "Not enough arguments for subcommand 'remove'");
         return 1;
     }
 
@@ -265,8 +265,8 @@ CmdRemove(int argc, const char **argv)
 int
 CmdPrint(int argc, const char **argv)
 {
-    (void)argc;
-    (void)argv;
+
+
     /*
     unsigned char decrypted[4];
     if (crypto_secretbox_open_easy(decrypted, ciphertext, crypto_secretbox_MACBYTES + plaintext_len, nonce, key) != 0) {

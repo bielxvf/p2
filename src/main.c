@@ -40,11 +40,17 @@ struct cmd_struct {
     int (*fn) (int, const char **);
 };
 
+void
+MemWipe(void *p, int len)
+{
+    memset(p, 0, len);
+}
+
 char *
 GetConfigPath(void)
 {
     char *config_path = (char *) malloc(sizeof(char)*PATH_MAX);
-    memset(config_path, 0, sizeof(char)*PATH_MAX);
+    MemWipe(config_path, sizeof(char)*PATH_MAX);
     struct passwd *pw = getpwuid(getuid());
     const char *homedir = pw->pw_dir;
     strcat(config_path, homedir);
@@ -108,7 +114,7 @@ char *
 GetNewPath(const char *path_prefix, const char *name, const char *extension)
 {
     char *path = (char *) malloc(sizeof(char)*PATH_MAX);
-    memset(path, 0, sizeof(char)*PATH_MAX);
+    MemWipe(path, sizeof(char)*PATH_MAX);
     strcat(path, path_prefix);
     strcat(path, "/");
     strcat(path, name);
@@ -127,7 +133,7 @@ GetPassPhrase(const char *prompt)
     tcsetattr(STDIN_FILENO, TCSANOW, &newtc);
 
     char *phrase = (char *) malloc(sizeof(char)*PASSWORD_MAX);
-    memset(phrase, 0, sizeof(char)*PASSWORD_MAX);
+    MemWipe(phrase, sizeof(char)*PASSWORD_MAX);
     printf("%s", prompt);
     scanf("%s", phrase);
 
@@ -191,10 +197,10 @@ CmdNew(int argc, const char **argv)
     if (sodium_init() < 0) {
         // Death
         PrintError(ERR "Sodium could not init in %s", __func__);
+        MemWipe(plaintext, sizeof(char)*plaintext_len);
+        MemWipe(password, sizeof(char)*password_len);
         free(new_path);
-        memset(plaintext, 0, sizeof(char)*plaintext_len);
         free(plaintext);
-        memset(password, 0, sizeof(char)*password_len);
         free(password);
         return 1;
     }
@@ -208,10 +214,10 @@ CmdNew(int argc, const char **argv)
     WriteDataToFile(new_path, nonce, nonce_size, ciphertext, ciphertext_size);
 
     // Wipe and free
+    MemWipe(plaintext, sizeof(char)*plaintext_len);
+    MemWipe(password, sizeof(char)*password_len);
     free(new_path);
-    memset(plaintext, 0, sizeof(char)*plaintext_len);
     free(plaintext);
-    memset(password, 0, sizeof(char)*password_len);
     free(password);
     return 0;
 }

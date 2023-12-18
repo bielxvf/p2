@@ -1,4 +1,4 @@
-#define _POSIX_C_SOURCE 1
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -161,12 +161,19 @@ WriteDataToFile(const char *path, const unsigned char *nonce, const size_t nonce
     fileptr = fopen(path, "w");
     for (size_t i = 0; i < nonce_size; i++) {
         fprintf(fileptr, "%X", nonce[i]);
+        if (i < nonce_size - 1) {
+            fprintf(fileptr, " ");
+        }
     }
-    fprintf(fileptr, ":");
+    fprintf(fileptr, "\n");
+    fprintf(fileptr, "%ld\n", ciphertext_size);
     for (size_t i = 0; i < ciphertext_size; i++) {
         fprintf(fileptr, "%X", ciphertext[i]);
+        if (i < ciphertext_size - 1) {
+            fprintf(fileptr, " ");
+        }
     }
-    fprintf(fileptr, ":%ld,%ld", nonce_size, ciphertext_size);
+    fprintf(fileptr, "\n");
     fclose(fileptr);
 }
 
@@ -281,54 +288,85 @@ CmdPrint(int argc, const char **argv)
 
     char *print_path = GetNewPath(GetConfigPath(), argv[1], EXTENSION_LOCKED);
 
-    FILE *fptr = fopen(print_path, "r");
-    char c;
-    int div_count = 0;
-    while ((c = fgetc(fptr)) != EOF && div_count != 2) {
-        if (c == ':') {
-            div_count++;
-        }
+    struct stat st;
+    if (stat(print_path, &st) != 0) {
+        PrintError(ERR "Invalid name: '%s'. File '%s' does not exist", argv[1], print_path);
+        free(print_path);
+        return 1;
     }
-    printf("  SIZES: %c", c);
-    while ((c = fgetc(fptr)) != EOF) {
-        printf("%c", c);
+
+    FILE *fptr;
+    fptr = fopen(print_path, "r");
+    char *line = (char *) malloc(sizeof(char) * PASSWORD_MAX);
+    size_t line_len = 0;
+    long int nonce_size = crypto_secretbox_NONCEBYTES;
+    long int ciphertext_size;
+
+    char *str_nonce = (char *) malloc(nonce_size);
+    getline(&str_nonce, &line_len, fptr);
+
+    getline(&line, &line_len, fptr);
+    ciphertext_size = strtol(line, NULL, 10);
+
+    char *str_ciphertext = (char *) malloc(sizeof(char) * PASSWORD_MAX);
+    getline(&str_ciphertext, &line_len, fptr);
+
+    unsigned char *nonce      = (unsigned char *) malloc(nonce_size);
+    unsigned char *ciphertext = (unsigned char *) malloc(ciphertext_size);
+
+    int i = 0, j = 0;
+    while (j < nonce_size) {
+        if (*(str_nonce+i) != ' ') {
+            if (*(str_nonce+i+1) != ' ') {
+                sscanf(str_nonce+i, "%2X", &nonce[j]);
+                i += 3;
+            } else {
+                sscanf(str_nonce+i, "%X", &nonce[j]);
+                i += 2;
+            }
+        } else {
+            i++;
+        }
+        j++;
+    }
+
+    printf("Nonce:      ");
+    for (int i = 0; i < nonce_size; i++) {
+        printf("%X", nonce[i]);
     }
     printf("\n");
-    fclose(fptr);
 
-    size_t nonce_size = crypto_secretbox_NONCEBYTES + 100;
-    size_t ciphertext_size = crypto_secretbox_MACBYTES + 100;
-
-    char ciphertext[ciphertext_size];
-    char nonce[nonce_size];
-
-    MemWipe(nonce, nonce_size);
-    MemWipe(ciphertext, ciphertext_size);
-
-    fptr = fopen(print_path, "r");
-    char s[2];
-    while ((c = fgetc(fptr)) != ':') {
-        sprintf(s, "%c", c);
-        strcat(nonce, s);
-        strcat(nonce, "\0");
+    i = 0;
+    j = 0;
+    while (j < ciphertext_size) {
+        while (*(str_ciphertext+i) == ' ') {
+            i++;
+        }
+        if (*(str_ciphertext+i+1) != ' ') {
+            sscanf(str_ciphertext+i, "%2X", &ciphertext[j]);
+            i += 2;
+        } else {
+            sscanf(str_ciphertext+i, "%X", &ciphertext[j]);
+            i++;
+        }
+        j++;
     }
 
-    while ((c = fgetc(fptr)) != ':') {
-        sprintf(s, "%c", c);
-        strcat(ciphertext, s);
-        strcat(ciphertext, "\0");
+    printf("Ciphertext: ");
+    for (int i = 0; i < ciphertext_size; i++) {
+        printf("%X", ciphertext[i]);
     }
-    fclose(fptr);
-
-    printf("  NONCE:      %s\n", nonce);
-    printf("  CIPHERTEXT: %s\n", ciphertext);
-
+    printf("\n");
     /*
     unsigned char decrypted[4];
     if (crypto_secretbox_open_easy(decrypted, ciphertext, crypto_secretbox_MACBYTES + plaintext_len, nonce, key) != 0) {
         return 1;
     }
     */
+
+    free(line);
+    free(str_nonce);
+    free(str_ciphertext);
     return 0;
 }
 

@@ -49,7 +49,9 @@ MemWipe(void *p, int len)
 void
 FileWipe(const char *path)
 {
-    FILE *fptr = fopen(remove_path, "w");
+    struct stat st;
+    stat(path, &st);
+    FILE *fptr = fopen(path, "w");
     for (int i = 0; i < st.st_size; i++) {
         fprintf(fptr, "%c", 0);
     }
@@ -76,7 +78,7 @@ MkConfigDir(void) // Will create ~/.config/p2 if it doesn't exist
     char *config_path = GetConfigPath();
 
     if (stat(config_path, &st) == -1) {
-        PrintError(INFO "%s does not exist, creating new", config_path);
+        PrintError(INFO "'%s' does not exist, creating new", config_path);
         mkdir(config_path, 0700);
     }
 }
@@ -87,7 +89,7 @@ PrintDirContents(char *path)
     DIR *dir = opendir(path);
     struct dirent *entity;
     size_t i = 0;
-    printf("Contents of %s:\n", path);
+    printf("Contents of '%s':\n", path);
     while ((entity = readdir(dir)) != NULL) {
         if (strcmp(entity->d_name, ".") != 0 && strcmp(entity->d_name, "..") != 0) {
             printf("  %s\n", entity->d_name);
@@ -96,7 +98,7 @@ PrintDirContents(char *path)
     }
     closedir(dir);
     if (i == 0) {
-        PrintError(INFO "%s looks empty. Create a new password with `p2 new [NAME]`", path);
+        PrintError(INFO "'%s' looks empty. Create a new password with `p2 new [NAME]`", path);
     }
 }
 
@@ -164,6 +166,7 @@ WriteDataToFile(const char *path, const unsigned char *nonce, const size_t nonce
     for (size_t i = 0; i < ciphertext_size; i++) {
         fprintf(fileptr, "%X", ciphertext[i]);
     }
+    fprintf(fileptr, ":%ld,%ld", nonce_size, ciphertext_size);
     fclose(fileptr);
 }
 
@@ -186,7 +189,7 @@ CmdNew(int argc, const char **argv)
 
     struct stat st;
     if (stat(new_path, &st) == 0) {
-        PrintError(ERR "Invalid name: %s. File %s already exists", argv[1], new_path);
+        PrintError(ERR "Invalid name: '%s'. File '%s' already exists", argv[1], new_path);
         free(new_path);
         return 1;
     }
@@ -206,7 +209,7 @@ CmdNew(int argc, const char **argv)
 
     if (sodium_init() < 0) {
         // Death
-        PrintError(ERR "Sodium could not init in %s", __func__);
+        PrintError(ERR "Sodium could not init in '%s'", __func__);
         MemWipe(plaintext, sizeof(char)*plaintext_len);
         MemWipe(password, sizeof(char)*password_len);
         free(new_path);
@@ -250,13 +253,13 @@ CmdRemove(int argc, const char **argv)
 
     struct stat st;
     if (stat(remove_path, &st) != 0) {
-        PrintError(ERR "Invalid name: %s. File %s does not exist", argv[1], remove_path);
+        PrintError(ERR "Invalid name: '%s'. File '%s' does not exist", argv[1], remove_path);
         free(remove_path);
         return 1;
     } else {
         FileWipe(remove_path);
         remove(remove_path);
-        printf("Removed file: %s\n", remove_path);
+        printf("Removed file: '%s'\n", remove_path);
     }
 
     return 0;
@@ -265,7 +268,60 @@ CmdRemove(int argc, const char **argv)
 int
 CmdPrint(int argc, const char **argv)
 {
+    // Check that we have just one argument, the name of the password we want to print
+    if (argc > 2) {
+        PrintError(ERR "Too many arguments for subcommand 'print'");
+        return 1;
+    } else if (argc < 2) {
+        PrintError(ERR "Not enough arguments for subcommand 'print'");
+        return 1;
+    }
 
+    MkConfigDir();
+
+    char *print_path = GetNewPath(GetConfigPath(), argv[1], EXTENSION_LOCKED);
+
+    FILE *fptr = fopen(print_path, "r");
+    char c;
+    int div_count = 0;
+    while ((c = fgetc(fptr)) != EOF && div_count != 2) {
+        if (c == ':') {
+            div_count++;
+        }
+    }
+    printf("  SIZES: %c", c);
+    while ((c = fgetc(fptr)) != EOF) {
+        printf("%c", c);
+    }
+    printf("\n");
+    fclose(fptr);
+
+    size_t nonce_size = crypto_secretbox_NONCEBYTES + 100;
+    size_t ciphertext_size = crypto_secretbox_MACBYTES + 100;
+
+    char ciphertext[ciphertext_size];
+    char nonce[nonce_size];
+
+    MemWipe(nonce, nonce_size);
+    MemWipe(ciphertext, ciphertext_size);
+
+    fptr = fopen(print_path, "r");
+    char s[2];
+    while ((c = fgetc(fptr)) != ':') {
+        sprintf(s, "%c", c);
+        strcat(nonce, s);
+        strcat(nonce, "\0");
+    }
+
+    while ((c = fgetc(fptr)) != ':') {
+        sprintf(s, "%c", c);
+        strcat(ciphertext, s);
+        strcat(ciphertext, "\0");
+    }
+    fclose(fptr);
+
+    printf("  NONCE:      %s\n", nonce);
+    printf("  CIPHERTEXT: %s\n", ciphertext);
 
     /*
     unsigned char decrypted[4];
@@ -306,6 +362,9 @@ main(int argc, const char **argv)
     }
     if (cmd) {
         return cmd->fn(argc, argv);
+    } else {
+        PrintError(ERR "Invalid subcommand '%s'", argv[0]);
+        argparse_usage(&argparse);
+        return 1;
     }
-    return 0;
 }

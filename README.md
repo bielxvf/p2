@@ -34,7 +34,7 @@ p2 -h
 - [x] List subcommand
 - [x] New subcommand
 - [ ] Print subcommand
-- [ ] Remove subcommand
+- [x] Remove subcommand
 - [ ] Copy subcommand
 - [ ] Backup subcommand
 - [ ] Restore subcommand

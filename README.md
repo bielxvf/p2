@@ -38,6 +38,7 @@ p2 -h
 - [ ] Copy subcommand
 - [ ] Backup subcommand
 - [ ] Restore subcommand
+- [ ] Make it pretty
 
 # Contribuiting
 - Be as simple as possible

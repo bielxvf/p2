@@ -69,18 +69,16 @@ CmdHelp(int argc, const char **argv)
 int
 CmdList(int argc, const char **argv)
 {
-    /* We don't need argv, so we just cast it to void */
+    /* We don't need argv */
     (void)argv;
 
-    // Check that we have no arguments
     if (argc != 1) {
         PrintError(ERR "Unnecessary argument(s) for subcommand 'list'");
         return 1;
     }
 
-    MkConfigDir(); // Make sure we have a config directory
+    MkConfigDir();
 
-    // List everything in our config directory
     PrintDirContents(GetConfigPath());
 
     return 0;
@@ -90,7 +88,7 @@ int
 CmdNew(int argc, const char **argv)
 {
 
-    // Check that we have just one argument, the name of the new password
+    /* Argument should be the name of the password we want to create */
     if (argc > 2) {
         PrintError(ERR "Too many arguments for subcommand 'new'");
         return 1;
@@ -124,7 +122,6 @@ CmdNew(int argc, const char **argv)
     unsigned char ciphertext[ciphertext_size];
 
     if (sodium_init() < 0) {
-        // Death
         PrintError(ERR "Sodium could not init in '%s'", __func__);
         MemWipe(plaintext, sizeof(char)*plaintext_len);
         MemWipe(password, sizeof(char)*password_len);
@@ -141,7 +138,6 @@ CmdNew(int argc, const char **argv)
 
     WriteDataToFile(new_path, nonce, nonce_size, ciphertext, ciphertext_size);
 
-    // Wipe and free
     MemWipe(plaintext, sizeof(char)*plaintext_len);
     MemWipe(password, sizeof(char)*password_len);
     free(new_path);
@@ -153,7 +149,7 @@ CmdNew(int argc, const char **argv)
 int
 CmdPrint(int argc, const char **argv)
 {
-    // Check that we have just one argument, the name of the password we want to print
+    /* Argument should be the name of the password we want to print */
     if (argc > 2) {
         PrintError(ERR "Too many arguments for subcommand 'print'");
         return 1;
@@ -203,8 +199,15 @@ CmdPrint(int argc, const char **argv)
     size_t password_len = strlen(password);
 
     if (sodium_init() < 0) {
-        // Death
         PrintError(ERR "Sodium could not init in '%s'", __func__);
+        MemWipe(password, sizeof(char) * password_len);
+        MemWipe(key, key_size);
+        free(password);
+        free(print_path);
+        free(line);
+        free(str_nonce);
+        free(str_ciphertext);
+        free(nonce);
         return 1;
     }
 
@@ -245,7 +248,7 @@ CmdPrint(int argc, const char **argv)
 int
 CmdRemove(int argc, const char **argv)
 {
-    // Check that we have just one argument, the name of the password we want to remove
+    /* Argument should be the name of the password we want to remove */
     if (argc > 2) {
         PrintError(ERR "Too many arguments for subcommand 'remove'");
         return 1;

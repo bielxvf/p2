@@ -28,7 +28,7 @@
 #define INFO "[INFO]  "
 
 static const char *const usages[] = {
-    PROGRAM_NAME" [options] [command] [args]\n\n"
+    PROGRAM_NAME" [command] [arg]\n\n"
     "    Commands:\n"
     "        list\tList passwords\n"
     "        new\tCreate a new password (encrypt)\n"

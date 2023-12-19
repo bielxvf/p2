@@ -33,7 +33,7 @@ p2 -h
 # TODO
 - [x] List subcommand
 - [x] New subcommand
-- [ ] Print subcommand
+- [x] Print subcommand
 - [x] Remove subcommand
 - [ ] Copy subcommand
 - [ ] Backup subcommand

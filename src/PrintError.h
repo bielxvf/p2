@@ -1,3 +1,7 @@
+/*
+ * Author(s):  Biel Sala , bielsalamimo@gmail.com
+ */
+
 #include <stdarg.h>
 
 void

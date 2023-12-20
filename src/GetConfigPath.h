@@ -3,6 +3,8 @@
  */
 
 #include <string.h>
+#include <pwd.h>
+#include <unistd.h>
 #include "./macros.h"
 
 char *

@@ -1,8 +1,8 @@
 /*
  * Author(s):  Biel Sala , bielsalamimo@gmail.com
  */
-
 #include <termios.h>
+#include <unistd.h>
 
 char *
 GetPassPhrase(const char *prompt)

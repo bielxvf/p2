@@ -1,6 +1,7 @@
 /*
  * Author(s):  Biel Sala , bielsalamimo@gmail.com
  */
+#include <dirent.h>
 
 void
 PrintDirContents(char *path)

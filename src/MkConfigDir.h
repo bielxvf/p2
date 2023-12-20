@@ -1,7 +1,7 @@
 /*
  * Author(s):  Biel Sala , bielsalamimo@gmail.com
  */
-
+#include <sys/stat.h>
 #include "./GetConfigPath.h"
 #include "./macros.h"
 

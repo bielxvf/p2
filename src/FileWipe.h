@@ -1,6 +1,7 @@
 /*
  * Author(s):  Biel Sala , bielsalamimo@gmail.com
  */
+#include <sys/stat.h>
 
 void
 FileWipe(const char *path)

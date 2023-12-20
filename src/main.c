@@ -4,17 +4,9 @@
  * Author(s):  Biel Sala , bielsalamimo@gmail.com
  *
  */
+#define  _POSIX_C_SOURCE 200809L
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/random.h>
-#include <pwd.h>
-#include <dirent.h>
-
 #include <sodium.h>
 
 #include "./PrintError.h"
@@ -36,7 +28,7 @@
 static const char *const usages[] = {
     PROGRAM_NAME" [command] [arg]\n\n"
     "    Commands:\n"
-    "        help\tShow this help message and exit"
+    "        help\tShow this help message and exit\n"
     "        list\tList passwords\n"
     "        new [name]\tCreate a new password (encrypt)\n"
     "        print [name]\tPrints a password (decrypt)\n"

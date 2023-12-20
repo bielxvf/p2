@@ -4,9 +4,10 @@ CFLAGS = -std=c18 -Wall -Wextra -Wpedantic -O3 -lsodium
 
 build:
 	mkdir build
-	gcc $(SRC) $(CFLAGS) -o build/$(BIN)
+	@time --format="\n  Exit status: %x\n  Build time: %es" gcc $(SRC) $(CFLAGS) -o build/$(BIN)
+	@echo -e "\nRun with \`./build/p2\`"
 
 clean:
-	rm -rf build
+	@rm -rf build
 
 rebuild: clean build

@@ -29,6 +29,11 @@
 #define INFO "[INFO]  "
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+#define UNUSED(a)   \
+    do {            \
+        (void) (a); \
+    } while(0)
+
 
 void PrintError(const char *fmt, ...);
 void MemWipe(void *p, int len);
@@ -44,11 +49,11 @@ void ReadHexFromStr(unsigned char *hex_arr, const long int hex_arr_size, const c
 static const char *const usages[] = {
     PROGRAM_NAME" [command] [arg]\n\n"
     "    Commands:\n"
-    "        help\tShow this help message and exit\n"
-    "        list\tList passwords\n"
-    "        new [name]\tCreate a new password (encrypt)\n"
-    "        print [name]\tPrints a password (decrypt)\n"
-    "        remove [name]\tRemoves a password",
+    "        help    Show this help message and exit\n"
+    "        list    List passwords\n"
+    "        new [name]    Create a new password (encrypt)\n"
+    "        print [name]    Prints a password (decrypt)\n"
+    "        remove [name]    Removes a password",
     NULL,
 };
 

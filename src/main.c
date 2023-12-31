@@ -28,7 +28,7 @@
 #define ERR  "[ERROR] "
 #define INFO "[INFO]  "
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*x))
 #define UNUSED(a)   \
     do {            \
         (void) (a); \
@@ -131,8 +131,8 @@ int CmdNew(int argc, const char **argv)
 
     if (sodium_init() < 0) {
         PrintError(ERR "Sodium could not init in '%s'", __func__);
-        MemWipe(plaintext, sizeof(char)*plaintext_len);
-        MemWipe(password, sizeof(char)*password_len);
+        MemWipe(plaintext, sizeof(*plaintext) * plaintext_len);
+        MemWipe(password, sizeof(*password) * password_len);
         free(new_path);
         free(plaintext);
         free(password);
@@ -146,8 +146,8 @@ int CmdNew(int argc, const char **argv)
 
     WriteDataToFile(new_path, nonce, nonce_size, ciphertext, ciphertext_size);
 
-    MemWipe(plaintext, sizeof(char)*plaintext_len);
-    MemWipe(password, sizeof(char)*password_len);
+    MemWipe(plaintext, sizeof(*plaintext) * plaintext_len);
+    MemWipe(password, sizeof(*password) * password_len);
     free(new_path);
     free(plaintext);
     free(password);
@@ -175,7 +175,7 @@ int CmdPrint(int argc, const char **argv)
         return 1;
     }
 
-    char *line = (char *) malloc(sizeof(char) * PASSWORD_MAX);
+    char *line = (char *) malloc(sizeof(*line) * PASSWORD_MAX);
     size_t line_len = 0;
     size_t nonce_size = crypto_secretbox_NONCEBYTES;
     size_t ciphertext_size;
@@ -191,7 +191,7 @@ int CmdPrint(int argc, const char **argv)
     ciphertext_size = strtol(line, NULL, 10);
     size_t plaintext_len = ciphertext_size - crypto_secretbox_MACBYTES;
 
-    char *str_ciphertext = (char *) malloc(sizeof(char) * PASSWORD_MAX);
+    char *str_ciphertext = (char *) malloc(sizeof(*str_ciphertext) * PASSWORD_MAX);
     getline(&str_ciphertext, &line_len, fptr);
     fclose(fptr);
 
@@ -206,7 +206,7 @@ int CmdPrint(int argc, const char **argv)
 
     if (sodium_init() < 0) {
         PrintError(ERR "Sodium could not init in '%s'", __func__);
-        MemWipe(password, sizeof(char) * password_len);
+        MemWipe(password, sizeof(*password) * password_len);
         MemWipe(key, key_size);
         free(password);
         free(print_path);
@@ -221,7 +221,7 @@ int CmdPrint(int argc, const char **argv)
 
     unsigned char decrypted[plaintext_len];
     if (crypto_secretbox_open_easy(decrypted, ciphertext, ciphertext_size, nonce, key) != 0) {
-        MemWipe(password, sizeof(char) * password_len);
+        MemWipe(password, sizeof(*password) * password_len);
         MemWipe(key, key_size);
         free(password);
         free(print_path);
@@ -232,7 +232,7 @@ int CmdPrint(int argc, const char **argv)
         PrintError(ERR "Decryption failed");
         return 1;
     }
-    MemWipe(password, sizeof(char) * password_len);
+    MemWipe(password, sizeof(*password) * password_len);
     MemWipe(key, key_size);
 
     for (size_t i = 0; i < plaintext_len; i++) {
@@ -240,7 +240,7 @@ int CmdPrint(int argc, const char **argv)
     }
     printf("\n");
 
-    MemWipe(decrypted, sizeof(char) * plaintext_len);
+    MemWipe(decrypted, sizeof(*decrypted) * plaintext_len);
     free(password);
     free(print_path);
     free(line);
@@ -300,7 +300,7 @@ int CmdCopy(int argc, const char **argv)
         return 1;
     }
 
-    char *line = (char *) malloc(sizeof(char) * PASSWORD_MAX);
+    char *line = (char *) malloc(sizeof(*line) * PASSWORD_MAX);
     size_t line_len = 0;
     size_t nonce_size = crypto_secretbox_NONCEBYTES;
     size_t ciphertext_size;
@@ -316,7 +316,7 @@ int CmdCopy(int argc, const char **argv)
     ciphertext_size = strtol(line, NULL, 10);
     size_t plaintext_len = ciphertext_size - crypto_secretbox_MACBYTES;
 
-    char *str_ciphertext = (char *) malloc(sizeof(char) * PASSWORD_MAX);
+    char *str_ciphertext = (char *) malloc(sizeof(*str_ciphertext) * PASSWORD_MAX);
     getline(&str_ciphertext, &line_len, fptr);
     fclose(fptr);
 
@@ -331,7 +331,7 @@ int CmdCopy(int argc, const char **argv)
 
     if (sodium_init() < 0) {
         PrintError(ERR "Sodium could not init in '%s'", __func__);
-        MemWipe(password, sizeof(char) * password_len);
+        MemWipe(password, sizeof(*password) * password_len);
         MemWipe(key, key_size);
         free(password);
         free(copy_path);
@@ -346,7 +346,7 @@ int CmdCopy(int argc, const char **argv)
 
     unsigned char decrypted[plaintext_len];
     if (crypto_secretbox_open_easy(decrypted, ciphertext, ciphertext_size, nonce, key) != 0) {
-        MemWipe(password, sizeof(char) * password_len);
+        MemWipe(password, sizeof(*password) * password_len);
         MemWipe(key, key_size);
         free(password);
         free(copy_path);
@@ -357,7 +357,7 @@ int CmdCopy(int argc, const char **argv)
         PrintError(ERR "Decryption failed");
         return 1;
     }
-    MemWipe(password, sizeof(char) * password_len);
+    MemWipe(password, sizeof(*password) * password_len);
     MemWipe(key, key_size);
 
     /* TODO: Copy decrypted[] to clipboard */
@@ -366,7 +366,7 @@ int CmdCopy(int argc, const char **argv)
     }
     printf("\n");
 
-    MemWipe(decrypted, sizeof(char) * plaintext_len);
+    MemWipe(decrypted, sizeof(*decrypted) * plaintext_len);
     free(password);
     free(copy_path);
     free(line);
@@ -477,8 +477,8 @@ char *GetPassPhrase(const char *prompt)
     newtc.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &newtc);
 
-    char *phrase = (char *) malloc(sizeof(char)*PASSWORD_MAX);
-    MemWipe(phrase, sizeof(char)*PASSWORD_MAX);
+    char *phrase = (char *) malloc(sizeof(*phrase) * PASSWORD_MAX);
+    MemWipe(phrase, sizeof(*phrase) * PASSWORD_MAX);
     printf("%s", prompt);
     scanf("%s", phrase);
 
@@ -489,8 +489,8 @@ char *GetPassPhrase(const char *prompt)
 
 char *GetNewPath(const char *path_prefix, const char *name, const char *extension)
 {
-    char *path = (char *) malloc(sizeof(char)*PATH_MAX);
-    MemWipe(path, sizeof(char)*PATH_MAX);
+    char *path = (char *) malloc(sizeof(*path) * PATH_MAX);
+    MemWipe(path, sizeof(*path) * PATH_MAX);
     strcat(path, path_prefix);
     strcat(path, "/");
     strcat(path, name);
@@ -541,8 +541,8 @@ void ReadHexFromStr(unsigned char *hex_arr, const long int hex_arr_size, const c
 
 char *GetConfigPath(void)
 {
-    char *config_path = (char *) malloc(sizeof(char)*PATH_MAX);
-    MemWipe(config_path, sizeof(char)*PATH_MAX);
+    char *config_path = (char *) malloc(sizeof(*config_path) * PATH_MAX);
+    MemWipe(config_path, sizeof(*config_path) * PATH_MAX);
     struct passwd *pw = getpwuid(getuid());
     const char *homedir = pw->pw_dir;
     strcat(config_path, homedir);

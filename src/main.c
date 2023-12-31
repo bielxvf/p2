@@ -64,8 +64,8 @@ struct cmd_struct {
 
 int CmdHelp(int argc, const char **argv)
 {
-    (void) argc;
-    (void) argv;
+    UNUSED(argc);
+    UNUSED(argv);
 
     struct argparse argparse;
     struct argparse_option options[] = {
@@ -80,8 +80,7 @@ int CmdHelp(int argc, const char **argv)
 
 int CmdList(int argc, const char **argv)
 {
-    /* We don't need argv */
-    (void)argv;
+    UNUSED(argv);
 
     if (argc != 1) {
         PrintError(ERR "Unnecessary argument(s) for subcommand 'list'");
@@ -98,7 +97,6 @@ int CmdList(int argc, const char **argv)
 int CmdNew(int argc, const char **argv)
 {
 
-    /* Argument should be the name of the password we want to create */
     if (argc > 2) {
         PrintError(ERR "Too many arguments for subcommand 'new'");
         return 1;
@@ -158,7 +156,6 @@ int CmdNew(int argc, const char **argv)
 
 int CmdPrint(int argc, const char **argv)
 {
-    /* Argument should be the name of the password we want to print */
     if (argc > 2) {
         PrintError(ERR "Too many arguments for subcommand 'print'");
         return 1;
@@ -232,7 +229,6 @@ int CmdPrint(int argc, const char **argv)
         free(str_nonce);
         free(str_ciphertext);
         free(nonce);
-        /* free(ciphertext); */
         PrintError(ERR "Decryption failed");
         return 1;
     }
@@ -251,13 +247,11 @@ int CmdPrint(int argc, const char **argv)
     free(str_nonce);
     free(str_ciphertext);
     free(nonce);
-    /* free(ciphertext); */
     return 0;
 }
 
 int CmdRemove(int argc, const char **argv)
 {
-    /* Argument should be the name of the password we want to remove */
     if (argc > 2) {
         PrintError(ERR "Too many arguments for subcommand 'remove'");
         return 1;
@@ -287,7 +281,6 @@ int CmdRemove(int argc, const char **argv)
 int CmdCopy(int argc, const char **argv)
 {
 
-    /* Argument should be the name of the password we want to copy to clipboard */
     if (argc > 2) {
         PrintError(ERR "Too many arguments for subcommand 'copy'");
         return 1;
@@ -361,7 +354,6 @@ int CmdCopy(int argc, const char **argv)
         free(str_nonce);
         free(str_ciphertext);
         free(nonce);
-        /* free(ciphertext); */
         PrintError(ERR "Decryption failed");
         return 1;
     }
@@ -381,7 +373,6 @@ int CmdCopy(int argc, const char **argv)
     free(str_nonce);
     free(str_ciphertext);
     free(nonce);
-    /* free(ciphertext); */
     return 0;
 }
 

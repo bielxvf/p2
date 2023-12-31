@@ -24,8 +24,8 @@
 #define PASSWORD_MAX 4096
 #define EXTENSION_LOCKED ".locked"
 
-#define ERR  "[ERROR] "
-#define INFO "[INFO]  "
+#define ERROR  "[ERROR] "
+#define INFO   "[INFO]  "
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*x))
 #define UNUSED(a)   \
@@ -34,16 +34,17 @@
     } while(0)
 
 
-void PrintError(const char *fmt, ...);
-void MemWipe(void *p, int len);
-void FileWipe(const char *path);
-void MkConfigDir(void);
-char *GetConfigPath(void);
-void PrintDirContents(char *path);
-char *GetPassPhrase(const char *prompt);
-char *GetNewPath(const char *path_prefix, const char *name, const char *extension);
-void WriteDataToFile(const char *path, const unsigned char *nonce, const size_t nonce_size, const unsigned char *ciphertext, const size_t ciphertext_size);
-void ReadHexFromStr(unsigned char *hex_arr, const long int hex_arr_size, const char *str);
+void printError(const char *fmt, ...);
+void printInfo(const char *fmt, ...);
+void memWipe(void *p, int len);
+void fileWipe(const char *path);
+void mkConfigDir(void);
+char *getConfigPath(void);
+void printDirContents(char *path);
+char *getPassPhrase(const char *prompt);
+char *getNewPath(const char *path_prefix, const char *name, const char *extension);
+void writeDataToFile(const char *path, const unsigned char *nonce, const size_t nonce_size, const unsigned char *ciphertext, const size_t ciphertext_size);
+void readHexFromStr(unsigned char *hex_arr, const long int hex_arr_size, const char *str);
 
 static const char *const usages[] = {
     PROGRAM_NAME" [command] [arg]\n\n"
@@ -82,13 +83,27 @@ int CmdList(int argc, const char **argv)
     UNUSED(argv);
 
     if (argc != 1) {
-        PrintError(ERR "Unnecessary argument(s) for subcommand 'list'");
+        printError("Unnecessary argument(s) for subcommand 'list'");
         return 1;
     }
 
-    MkConfigDir();
+    mkConfigDir();
 
-    PrintDirContents(GetConfigPath());
+    char *path = getConfigPath();
+    DIR *dir = opendir(path);
+    struct dirent *entity;
+    size_t i = 0;
+    printf("Contents of '%s':\n", path);
+    while ((entity = readdir(dir)) != NULL) {
+        if (strcmp(entity->d_name, ".") != 0 && strcmp(entity->d_name, "..") != 0) {
+            printf("  %s\n", entity->d_name);
+            i++;
+        }
+    }
+    closedir(dir);
+    if (i == 0) {
+        printInfo("'%s' looks empty. Create a new password with `p2 new [NAME]`", path);
+    }
 
     return 0;
 }
@@ -97,26 +112,26 @@ int CmdNew(int argc, const char **argv)
 {
 
     if (argc > 2) {
-        PrintError(ERR "Too many arguments for subcommand 'new'");
+        printError("Too many arguments for subcommand 'new'");
         return 1;
     } else if (argc < 2) {
-        PrintError(ERR "Not enough arguments for subcommand 'new'");
+        printError("Not enough arguments for subcommand 'new'");
         return 1;
     }
 
-    MkConfigDir();
+    mkConfigDir();
 
-    char *new_path = GetNewPath(GetConfigPath(), argv[1], EXTENSION_LOCKED);
+    char *new_path = getNewPath(getConfigPath(), argv[1], EXTENSION_LOCKED);
 
     struct stat st;
     if (stat(new_path, &st) == 0) {
-        PrintError(ERR "Invalid name: '%s'. File '%s' already exists", argv[1], new_path);
+        printError("Invalid name: '%s'. File '%s' already exists", argv[1], new_path);
         free(new_path);
         return 1;
     }
 
-    char *plaintext = GetPassPhrase("Enter password: ");
-    char *password = GetPassPhrase("Master password: ");
+    char *plaintext = getPassPhrase("Enter password: ");
+    char *password = getPassPhrase("Master password: ");
 
     size_t password_len = strlen(password);
     size_t plaintext_len = strlen(plaintext);
@@ -129,9 +144,9 @@ int CmdNew(int argc, const char **argv)
     unsigned char ciphertext[ciphertext_size];
 
     if (sodium_init() < 0) {
-        PrintError(ERR "Sodium could not init in '%s'", __func__);
-        MemWipe(plaintext, sizeof(*plaintext) * plaintext_len);
-        MemWipe(password, sizeof(*password) * password_len);
+        printError("Sodium could not init in '%s'", __func__);
+        memWipe(plaintext, sizeof(*plaintext) * plaintext_len);
+        memWipe(password, sizeof(*password) * password_len);
         free(new_path);
         free(plaintext);
         free(password);
@@ -143,10 +158,10 @@ int CmdNew(int argc, const char **argv)
     randombytes_buf(nonce, sizeof(nonce));
     crypto_secretbox_easy(ciphertext, (unsigned char *)plaintext, plaintext_len, nonce, key);
 
-    WriteDataToFile(new_path, nonce, nonce_size, ciphertext, ciphertext_size);
+    writeDataToFile(new_path, nonce, nonce_size, ciphertext, ciphertext_size);
 
-    MemWipe(plaintext, sizeof(*plaintext) * plaintext_len);
-    MemWipe(password, sizeof(*password) * password_len);
+    memWipe(plaintext, sizeof(*plaintext) * plaintext_len);
+    memWipe(password, sizeof(*password) * password_len);
     free(new_path);
     free(plaintext);
     free(password);
@@ -156,20 +171,20 @@ int CmdNew(int argc, const char **argv)
 int CmdPrint(int argc, const char **argv)
 {
     if (argc > 2) {
-        PrintError(ERR "Too many arguments for subcommand 'print'");
+        printError("Too many arguments for subcommand 'print'");
         return 1;
     } else if (argc < 2) {
-        PrintError(ERR "Not enough arguments for subcommand 'print'");
+        printError("Not enough arguments for subcommand 'print'");
         return 1;
     }
 
-    MkConfigDir();
+    mkConfigDir();
 
-    char *print_path = GetNewPath(GetConfigPath(), argv[1], EXTENSION_LOCKED);
+    char *print_path = getNewPath(getConfigPath(), argv[1], EXTENSION_LOCKED);
 
     struct stat st;
     if (stat(print_path, &st) != 0) {
-        PrintError(ERR "Invalid name: '%s'. File '%s' does not exist", argv[1], print_path);
+        printError("Invalid name: '%s'. File '%s' does not exist", argv[1], print_path);
         free(print_path);
         return 1;
     }
@@ -197,16 +212,16 @@ int CmdPrint(int argc, const char **argv)
     unsigned char *nonce      = (unsigned char *) malloc(nonce_size);
     unsigned char *ciphertext = (unsigned char *) malloc(ciphertext_size);
 
-    ReadHexFromStr(nonce, nonce_size, str_nonce);
-    ReadHexFromStr(ciphertext, ciphertext_size, str_ciphertext);
+    readHexFromStr(nonce, nonce_size, str_nonce);
+    readHexFromStr(ciphertext, ciphertext_size, str_ciphertext);
 
-    char *password = GetPassPhrase("Master password: ");
+    char *password = getPassPhrase("Master password: ");
     size_t password_len = strlen(password);
 
     if (sodium_init() < 0) {
-        PrintError(ERR "Sodium could not init in '%s'", __func__);
-        MemWipe(password, sizeof(*password) * password_len);
-        MemWipe(key, key_size);
+        printError("Sodium could not init in '%s'", __func__);
+        memWipe(password, sizeof(*password) * password_len);
+        memWipe(key, key_size);
         free(password);
         free(print_path);
         free(line);
@@ -220,26 +235,26 @@ int CmdPrint(int argc, const char **argv)
 
     unsigned char decrypted[plaintext_len];
     if (crypto_secretbox_open_easy(decrypted, ciphertext, ciphertext_size, nonce, key) != 0) {
-        MemWipe(password, sizeof(*password) * password_len);
-        MemWipe(key, key_size);
+        memWipe(password, sizeof(*password) * password_len);
+        memWipe(key, key_size);
         free(password);
         free(print_path);
         free(line);
         free(str_nonce);
         free(str_ciphertext);
         free(nonce);
-        PrintError(ERR "Decryption failed");
+        printError("Decryption failed");
         return 1;
     }
-    MemWipe(password, sizeof(*password) * password_len);
-    MemWipe(key, key_size);
+    memWipe(password, sizeof(*password) * password_len);
+    memWipe(key, key_size);
 
     for (size_t i = 0; i < plaintext_len; i++) {
         printf("%c", decrypted[i]);
     }
     printf("\n");
 
-    MemWipe(decrypted, sizeof(*decrypted) * plaintext_len);
+    memWipe(decrypted, sizeof(*decrypted) * plaintext_len);
     free(password);
     free(print_path);
     free(line);
@@ -252,24 +267,24 @@ int CmdPrint(int argc, const char **argv)
 int CmdRemove(int argc, const char **argv)
 {
     if (argc > 2) {
-        PrintError(ERR "Too many arguments for subcommand 'remove'");
+        printError("Too many arguments for subcommand 'remove'");
         return 1;
     } else if (argc < 2) {
-        PrintError(ERR "Not enough arguments for subcommand 'remove'");
+        printError("Not enough arguments for subcommand 'remove'");
         return 1;
     }
 
-    MkConfigDir();
+    mkConfigDir();
 
-    char *remove_path = GetNewPath(GetConfigPath(), argv[1], EXTENSION_LOCKED);
+    char *remove_path = getNewPath(getConfigPath(), argv[1], EXTENSION_LOCKED);
 
     struct stat st;
     if (stat(remove_path, &st) != 0) {
-        PrintError(ERR "Invalid name: '%s'. File '%s' does not exist", argv[1], remove_path);
+        printError("Invalid name: '%s'. File '%s' does not exist", argv[1], remove_path);
         free(remove_path);
         return 1;
     } else {
-        FileWipe(remove_path);
+        fileWipe(remove_path);
         remove(remove_path);
         printf("Removed file: '%s'\n", remove_path);
     }
@@ -281,20 +296,20 @@ int CmdCopy(int argc, const char **argv)
 {
 
     if (argc > 2) {
-        PrintError(ERR "Too many arguments for subcommand 'copy'");
+        printError("Too many arguments for subcommand 'copy'");
         return 1;
     } else if (argc < 2) {
-        PrintError(ERR "Not enough arguments for subcommand 'copy'");
+        printError("Not enough arguments for subcommand 'copy'");
         return 1;
     }
 
-    MkConfigDir();
+    mkConfigDir();
 
-    char *copy_path = GetNewPath(GetConfigPath(), argv[1], EXTENSION_LOCKED);
+    char *copy_path = getNewPath(getConfigPath(), argv[1], EXTENSION_LOCKED);
 
     struct stat st;
     if (stat(copy_path, &st) != 0) {
-        PrintError(ERR "Invalid name: '%s'. File '%s' does not exist", argv[1], copy_path);
+        printError("Invalid name: '%s'. File '%s' does not exist", argv[1], copy_path);
         free(copy_path);
         return 1;
     }
@@ -322,16 +337,16 @@ int CmdCopy(int argc, const char **argv)
     unsigned char *nonce      = (unsigned char *) malloc(nonce_size);
     unsigned char *ciphertext = (unsigned char *) malloc(ciphertext_size);
 
-    ReadHexFromStr(nonce, nonce_size, str_nonce);
-    ReadHexFromStr(ciphertext, ciphertext_size, str_ciphertext);
+    readHexFromStr(nonce, nonce_size, str_nonce);
+    readHexFromStr(ciphertext, ciphertext_size, str_ciphertext);
 
-    char *password = GetPassPhrase("Master password: ");
+    char *password = getPassPhrase("Master password: ");
     size_t password_len = strlen(password);
 
     if (sodium_init() < 0) {
-        PrintError(ERR "Sodium could not init in '%s'", __func__);
-        MemWipe(password, sizeof(*password) * password_len);
-        MemWipe(key, key_size);
+        printError("Sodium could not init in '%s'", __func__);
+        memWipe(password, sizeof(*password) * password_len);
+        memWipe(key, key_size);
         free(password);
         free(copy_path);
         free(line);
@@ -345,19 +360,19 @@ int CmdCopy(int argc, const char **argv)
 
     unsigned char decrypted[plaintext_len];
     if (crypto_secretbox_open_easy(decrypted, ciphertext, ciphertext_size, nonce, key) != 0) {
-        MemWipe(password, sizeof(*password) * password_len);
-        MemWipe(key, key_size);
+        memWipe(password, sizeof(*password) * password_len);
+        memWipe(key, key_size);
         free(password);
         free(copy_path);
         free(line);
         free(str_nonce);
         free(str_ciphertext);
         free(nonce);
-        PrintError(ERR "Decryption failed");
+        printError("Decryption failed");
         return 1;
     }
-    MemWipe(password, sizeof(*password) * password_len);
-    MemWipe(key, key_size);
+    memWipe(password, sizeof(*password) * password_len);
+    memWipe(key, key_size);
 
     /* TODO: Copy decrypted[] to clipboard */
     for (size_t i = 0; i < plaintext_len; i++) {
@@ -365,7 +380,7 @@ int CmdCopy(int argc, const char **argv)
     }
     printf("\n");
 
-    MemWipe(decrypted, sizeof(*decrypted) * plaintext_len);
+    memWipe(decrypted, sizeof(*decrypted) * plaintext_len);
     free(password);
     free(copy_path);
     free(line);
@@ -406,27 +421,38 @@ int main(int argc, const char **argv)
     if (cmd) {
         return cmd->fn(argc, argv);
     } else {
-        PrintError(ERR "Invalid subcommand '%s'", argv[0]);
+        printError("Invalid subcommand '%s'", argv[0]);
         argparse_usage(&argparse);
         return 1;
     }
 }
 
-void PrintError(const char *fmt, ...)
+void printError(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
+    fprintf(stderr, ERROR);
     vfprintf(stderr, fmt, ap);
-    printf("\n");
+    fprintf(stderr, "\n");
     va_end(ap);
 }
 
-void MemWipe(void *p, int len)
+void printInfo(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    fprintf(stderr, INFO);
+    vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
+    va_end(ap);
+}
+
+void memWipe(void *p, int len)
 {
     memset(p, 0, len);
 }
 
-void FileWipe(const char *path)
+void fileWipe(const char *path)
 {
     struct stat st;
     stat(path, &st);
@@ -437,37 +463,19 @@ void FileWipe(const char *path)
     fclose(fptr);
 }
 
-void MkConfigDir(void)
+void mkConfigDir(void)
 {
     struct stat st = {0};
 
-    char *config_path = GetConfigPath();
+    char *config_path = getConfigPath();
 
     if (stat(config_path, &st) == -1) {
-        PrintError(INFO "'%s' does not exist, creating new", config_path);
+        printInfo("'%s' does not exist, creating new", config_path);
         mkdir(config_path, 0700);
     }
 }
 
-void PrintDirContents(char *path)
-{
-    DIR *dir = opendir(path);
-    struct dirent *entity;
-    size_t i = 0;
-    printf("Contents of '%s':\n", path);
-    while ((entity = readdir(dir)) != NULL) {
-        if (strcmp(entity->d_name, ".") != 0 && strcmp(entity->d_name, "..") != 0) {
-            printf("  %s\n", entity->d_name);
-            i++;
-        }
-    }
-    closedir(dir);
-    if (i == 0) {
-        PrintError(INFO "'%s' looks empty. Create a new password with `p2 new [NAME]`", path);
-    }
-}
-
-char *GetPassPhrase(const char *prompt)
+char *getPassPhrase(const char *prompt)
 {
     struct termios oldtc;
     struct termios newtc;
@@ -477,7 +485,7 @@ char *GetPassPhrase(const char *prompt)
     tcsetattr(STDIN_FILENO, TCSANOW, &newtc);
 
     char *phrase = (char *) malloc(sizeof(*phrase) * PASSWORD_MAX);
-    MemWipe(phrase, sizeof(*phrase) * PASSWORD_MAX);
+    memWipe(phrase, sizeof(*phrase) * PASSWORD_MAX);
     printf("%s", prompt);
     scanf("%s", phrase);
 
@@ -486,10 +494,10 @@ char *GetPassPhrase(const char *prompt)
     return phrase;
 }
 
-char *GetNewPath(const char *path_prefix, const char *name, const char *extension)
+char *getNewPath(const char *path_prefix, const char *name, const char *extension)
 {
     char *path = (char *) malloc(sizeof(*path) * FILENAME_MAX);
-    MemWipe(path, sizeof(*path) * FILENAME_MAX);
+    memWipe(path, sizeof(*path) * FILENAME_MAX);
     strcat(path, path_prefix);
     strcat(path, "/");
     strcat(path, name);
@@ -497,7 +505,7 @@ char *GetNewPath(const char *path_prefix, const char *name, const char *extensio
     return path;
 }
 
-void WriteDataToFile(const char *path, const unsigned char *nonce, const size_t nonce_size, const unsigned char *ciphertext, const size_t ciphertext_size)
+void writeDataToFile(const char *path, const unsigned char *nonce, const size_t nonce_size, const unsigned char *ciphertext, const size_t ciphertext_size)
 {
     FILE *fileptr;
     fileptr = fopen(path, "w");
@@ -519,7 +527,7 @@ void WriteDataToFile(const char *path, const unsigned char *nonce, const size_t 
     fclose(fileptr);
 }
 
-void ReadHexFromStr(unsigned char *hex_arr, const long int hex_arr_size, const char *str)
+void readHexFromStr(unsigned char *hex_arr, const long int hex_arr_size, const char *str)
 {
     int i = 0, j = 0;
     while (j < hex_arr_size) {
@@ -538,10 +546,10 @@ void ReadHexFromStr(unsigned char *hex_arr, const long int hex_arr_size, const c
     }
 }
 
-char *GetConfigPath(void)
+char *getConfigPath(void)
 {
     char *config_path = (char *) malloc(sizeof(*config_path) * FILENAME_MAX);
-    MemWipe(config_path, sizeof(*config_path) * FILENAME_MAX);
+    memWipe(config_path, sizeof(*config_path) * FILENAME_MAX);
     struct passwd *pw = getpwuid(getuid());
     const char *homedir = pw->pw_dir;
     strcat(config_path, homedir);

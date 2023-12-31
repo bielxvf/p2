@@ -8,22 +8,38 @@
 
 #include <sys/stat.h>
 #include <sodium.h>
+#include <stdarg.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <termios.h>
+#include <unistd.h>
+#include <string.h>
+#include <pwd.h>
+#include <unistd.h>
 
-#include "./PrintError.h"
-#include "./MemWipe.h"
-#include "./FileWipe.h"
-#include "./MkConfigDir.h"
-#include "./PrintDirContents.h"
-#include "./GetPassPhrase.h"
-#include "./GetNewPath.h"
-#include "./WriteDataToFile.h"
-#include "./ReadHexFromStr.h"
+#include "../libargparse/argparse.h"
 
-#include "./macros.h"
+#define PROGRAM_NAME "p2"
+#define PATH_MAX 4096
+#define PASSWORD_MAX 4096
+#define EXTENSION_LOCKED ".locked"
 
-#include "./libargparse/argparse.c"
+#define ERR  "[ERROR] "
+#define INFO "[INFO]  "
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
+void PrintError(const char *fmt, ...);
+void MemWipe(void *p, int len);
+void FileWipe(const char *path);
+void MkConfigDir(void);
+char *GetConfigPath(void);
+void PrintDirContents(char *path);
+char *GetPassPhrase(const char *prompt);
+char *GetNewPath(const char *path_prefix, const char *name, const char *extension);
+void WriteDataToFile(const char *path, const unsigned char *nonce, const size_t nonce_size, const unsigned char *ciphertext, const size_t ciphertext_size);
+void ReadHexFromStr(unsigned char *hex_arr, const long int hex_arr_size, const char *str);
 
 static const char *const usages[] = {
     PROGRAM_NAME" [command] [arg]\n\n"
@@ -41,8 +57,7 @@ struct cmd_struct {
     int (*fn) (int, const char **);
 };
 
-int
-CmdHelp(int argc, const char **argv)
+int CmdHelp(int argc, const char **argv)
 {
     (void) argc;
     (void) argv;
@@ -58,8 +73,7 @@ CmdHelp(int argc, const char **argv)
     return 0;
 }
 
-int
-CmdList(int argc, const char **argv)
+int CmdList(int argc, const char **argv)
 {
     /* We don't need argv */
     (void)argv;
@@ -76,8 +90,7 @@ CmdList(int argc, const char **argv)
     return 0;
 }
 
-int
-CmdNew(int argc, const char **argv)
+int CmdNew(int argc, const char **argv)
 {
 
     /* Argument should be the name of the password we want to create */
@@ -138,8 +151,7 @@ CmdNew(int argc, const char **argv)
     return 0;
 }
 
-int
-CmdPrint(int argc, const char **argv)
+int CmdPrint(int argc, const char **argv)
 {
     /* Argument should be the name of the password we want to print */
     if (argc > 2) {
@@ -238,8 +250,7 @@ CmdPrint(int argc, const char **argv)
     return 0;
 }
 
-int
-CmdRemove(int argc, const char **argv)
+int CmdRemove(int argc, const char **argv)
 {
     /* Argument should be the name of the password we want to remove */
     if (argc > 2) {
@@ -268,8 +279,7 @@ CmdRemove(int argc, const char **argv)
     return 0;
 }
 
-int
-CmdCopy(int argc, const char **argv)
+int CmdCopy(int argc, const char **argv)
 {
 
     /* Argument should be the name of the password we want to copy to clipboard */
@@ -379,8 +389,7 @@ static struct cmd_struct commands[] = {
     { "copy"  , CmdCopy   },
 };
 
-int
-main(int argc, const char **argv)
+int main(int argc, const char **argv)
 {
     struct argparse argparse;
     struct argparse_option options[] = {
@@ -406,4 +415,141 @@ main(int argc, const char **argv)
         argparse_usage(&argparse);
         return 1;
     }
+}
+
+void PrintError(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    printf("\n");
+    va_end(ap);
+}
+
+void MemWipe(void *p, int len)
+{
+    memset(p, 0, len);
+}
+
+void FileWipe(const char *path)
+{
+    struct stat st;
+    stat(path, &st);
+    FILE *fptr = fopen(path, "w");
+    for (int i = 0; i < st.st_size; i++) {
+        fprintf(fptr, "%c", 0);
+    }
+    fclose(fptr);
+}
+
+void MkConfigDir(void)
+{
+    struct stat st = {0};
+
+    char *config_path = GetConfigPath();
+
+    if (stat(config_path, &st) == -1) {
+        PrintError(INFO "'%s' does not exist, creating new", config_path);
+        mkdir(config_path, 0700);
+    }
+}
+
+void PrintDirContents(char *path)
+{
+    DIR *dir = opendir(path);
+    struct dirent *entity;
+    size_t i = 0;
+    printf("Contents of '%s':\n", path);
+    while ((entity = readdir(dir)) != NULL) {
+        if (strcmp(entity->d_name, ".") != 0 && strcmp(entity->d_name, "..") != 0) {
+            printf("  %s\n", entity->d_name);
+            i++;
+        }
+    }
+    closedir(dir);
+    if (i == 0) {
+        PrintError(INFO "'%s' looks empty. Create a new password with `p2 new [NAME]`", path);
+    }
+}
+
+char *GetPassPhrase(const char *prompt)
+{
+    struct termios oldtc;
+    struct termios newtc;
+    tcgetattr(STDIN_FILENO, &oldtc);
+    newtc = oldtc;
+    newtc.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newtc);
+
+    char *phrase = (char *) malloc(sizeof(char)*PASSWORD_MAX);
+    MemWipe(phrase, sizeof(char)*PASSWORD_MAX);
+    printf("%s", prompt);
+    scanf("%s", phrase);
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldtc);
+    printf("\n");
+    return phrase;
+}
+
+char *GetNewPath(const char *path_prefix, const char *name, const char *extension)
+{
+    char *path = (char *) malloc(sizeof(char)*PATH_MAX);
+    MemWipe(path, sizeof(char)*PATH_MAX);
+    strcat(path, path_prefix);
+    strcat(path, "/");
+    strcat(path, name);
+    strcat(path, extension);
+    return path;
+}
+
+void WriteDataToFile(const char *path, const unsigned char *nonce, const size_t nonce_size, const unsigned char *ciphertext, const size_t ciphertext_size)
+{
+    FILE *fileptr;
+    fileptr = fopen(path, "w");
+    for (size_t i = 0; i < nonce_size; i++) {
+        fprintf(fileptr, "%X", nonce[i]);
+        if (i < nonce_size - 1) {
+            fprintf(fileptr, " ");
+        }
+    }
+    fprintf(fileptr, "\n");
+    fprintf(fileptr, "%ld\n", ciphertext_size);
+    for (size_t i = 0; i < ciphertext_size; i++) {
+        fprintf(fileptr, "%X", ciphertext[i]);
+        if (i < ciphertext_size - 1) {
+            fprintf(fileptr, " ");
+        }
+    }
+    fprintf(fileptr, "\n");
+    fclose(fileptr);
+}
+
+void ReadHexFromStr(unsigned char *hex_arr, const long int hex_arr_size, const char *str)
+{
+    int i = 0, j = 0;
+    while (j < hex_arr_size) {
+        if (*(str+i) != ' ') {
+            if (*(str+i+1) != ' ') {
+                sscanf(str+i, "%2X", (unsigned int *) &hex_arr[j]);
+                i += 3;
+            } else {
+                sscanf(str+i, "%X", (unsigned int *) &hex_arr[j]);
+                i += 2;
+            }
+        } else {
+            i++;
+        }
+        j++;
+    }
+}
+
+char *GetConfigPath(void)
+{
+    char *config_path = (char *) malloc(sizeof(char)*PATH_MAX);
+    MemWipe(config_path, sizeof(char)*PATH_MAX);
+    struct passwd *pw = getpwuid(getuid());
+    const char *homedir = pw->pw_dir;
+    strcat(config_path, homedir);
+    strcat(config_path, "/.config/" PROGRAM_NAME);
+    return config_path;
 }

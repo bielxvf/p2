@@ -1,4 +1,4 @@
-SRC = src/main.c
+SRC = src/main.c libargparse/argparse.c
 BIN = p2
 CFLAGS = -std=c18 -Wall -Wextra -Wpedantic -O3 -lsodium
 

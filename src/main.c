@@ -21,7 +21,6 @@
 #include "../libargparse/argparse.h"
 
 #define PROGRAM_NAME "p2"
-#define PATH_MAX 4096
 #define PASSWORD_MAX 4096
 #define EXTENSION_LOCKED ".locked"
 
@@ -489,8 +488,8 @@ char *GetPassPhrase(const char *prompt)
 
 char *GetNewPath(const char *path_prefix, const char *name, const char *extension)
 {
-    char *path = (char *) malloc(sizeof(*path) * PATH_MAX);
-    MemWipe(path, sizeof(*path) * PATH_MAX);
+    char *path = (char *) malloc(sizeof(*path) * FILENAME_MAX);
+    MemWipe(path, sizeof(*path) * FILENAME_MAX);
     strcat(path, path_prefix);
     strcat(path, "/");
     strcat(path, name);
@@ -541,8 +540,8 @@ void ReadHexFromStr(unsigned char *hex_arr, const long int hex_arr_size, const c
 
 char *GetConfigPath(void)
 {
-    char *config_path = (char *) malloc(sizeof(*config_path) * PATH_MAX);
-    MemWipe(config_path, sizeof(*config_path) * PATH_MAX);
+    char *config_path = (char *) malloc(sizeof(*config_path) * FILENAME_MAX);
+    MemWipe(config_path, sizeof(*config_path) * FILENAME_MAX);
     struct passwd *pw = getpwuid(getuid());
     const char *homedir = pw->pw_dir;
     strcat(config_path, homedir);

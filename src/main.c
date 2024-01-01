@@ -4,6 +4,11 @@
  * Author(s):  Biel Sala , bielsalamimo@gmail.com
  *
  */
+
+// TODO: Backup subcommand
+// TODO: Restore subcommand
+// TODO: Colors
+
 #define  _POSIX_C_SOURCE 200809L
 
 #include <sys/stat.h>
@@ -51,9 +56,10 @@ static const char *const usages[] = {
     "    Commands:\n"
     "        help    Show this help message and exit\n"
     "        list    List passwords\n"
-    "        new [name]    Create a new password (encrypt)\n"
-    "        print [name]    Prints a password (decrypt)\n"
-    "        remove [name]    Removes a password",
+    "        new [name]    Create a new password\n"
+    "        print [name]    Prints a password\n"
+    "        remove [name]    Removes a password\n"
+    "        copy [name]    Copies a password to clipboard",
     NULL,
 };
 
@@ -62,7 +68,7 @@ struct cmd_struct {
     int (*fn) (int, const char **);
 };
 
-int CmdHelp(int argc, const char **argv)
+int cmdHelp(int argc, const char **argv)
 {
     UNUSED(argc);
     UNUSED(argv);
@@ -78,8 +84,9 @@ int CmdHelp(int argc, const char **argv)
     return 0;
 }
 
-int CmdList(int argc, const char **argv)
+int cmdList(int argc, const char **argv)
 {
+    // TODO: Make it ignore extension
     UNUSED(argv);
 
     if (argc != 1) {
@@ -108,7 +115,7 @@ int CmdList(int argc, const char **argv)
     return 0;
 }
 
-int CmdNew(int argc, const char **argv)
+int cmdNew(int argc, const char **argv)
 {
 
     if (argc > 2) {
@@ -168,7 +175,7 @@ int CmdNew(int argc, const char **argv)
     return 0;
 }
 
-int CmdPrint(int argc, const char **argv)
+int cmdPrint(int argc, const char **argv)
 {
     if (argc > 2) {
         printError("Too many arguments for subcommand 'print'");
@@ -264,7 +271,7 @@ int CmdPrint(int argc, const char **argv)
     return 0;
 }
 
-int CmdRemove(int argc, const char **argv)
+int cmdRemove(int argc, const char **argv)
 {
     if (argc > 2) {
         printError("Too many arguments for subcommand 'remove'");
@@ -292,8 +299,9 @@ int CmdRemove(int argc, const char **argv)
     return 0;
 }
 
-int CmdCopy(int argc, const char **argv)
+int cmdCopy(int argc, const char **argv)
 {
+    // TODO: Copy decrypted[] to clipboard
 
     if (argc > 2) {
         printError("Too many arguments for subcommand 'copy'");
@@ -374,7 +382,6 @@ int CmdCopy(int argc, const char **argv)
     memWipe(password, sizeof(*password) * password_len);
     memWipe(key, key_size);
 
-    /* TODO: Copy decrypted[] to clipboard */
     for (size_t i = 0; i < plaintext_len; i++) {
         printf("%c", decrypted[i]);
     }
@@ -391,12 +398,12 @@ int CmdCopy(int argc, const char **argv)
 }
 
 static struct cmd_struct commands[] = {
-    { "help"  , CmdHelp   },
-    { "list"  , CmdList   },
-    { "new"   , CmdNew    },
-    { "print" , CmdPrint  },
-    { "remove", CmdRemove },
-    { "copy"  , CmdCopy   },
+    { "help"  , cmdHelp   },
+    { "list"  , cmdList   },
+    { "new"   , cmdNew    },
+    { "print" , cmdPrint  },
+    { "remove", cmdRemove },
+    { "copy"  , cmdCopy   },
 };
 
 int main(int argc, const char **argv)

@@ -30,16 +30,6 @@ Just copy the binary to somewhere in your `PATH`
 p2 -h
 ```
 
-# TODO
-- [x] List subcommand
-- [x] New subcommand
-- [x] Print subcommand
-- [x] Remove subcommand
-- [ ] Copy subcommand
-- [ ] Backup subcommand
-- [ ] Restore subcommand
-- [ ] Make it pretty
-
 # Contribuiting
 - Be as simple as possible
 - Be as explicit as possible

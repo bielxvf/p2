@@ -16,6 +16,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <dirent.h>
 #include <termios.h>
 #include <unistd.h>
@@ -302,8 +303,6 @@ int cmdRemove(int argc, const char **argv)
 
 int cmdCopy(int argc, const char **argv)
 {
-    // TODO: Copy decrypted[] to clipboard
-
     if (argc > 2) {
         printError("Too many arguments for subcommand 'copy'");
         return 1;
@@ -383,10 +382,19 @@ int cmdCopy(int argc, const char **argv)
     memWipe(password, sizeof(*password) * password_len);
     memWipe(key, key_size);
 
+    char filename_out[FILENAME_MAX];
+    struct timeval time;
+    gettimeofday(&time, NULL);
+    sprintf(filename_out, "/tmp/"PROGRAM_NAME".%ld.txt", time.tv_usec);
+    FILE *file_out = fopen(filename_out, "w");
     for (size_t i = 0; i < plaintext_len; i++) {
-        printf("%c", decrypted[i]);
+        fprintf(file_out, "%c", decrypted[i]);
     }
-    printf("\n");
+    fclose(file_out);
+    char cmd[strlen(filename_out) + 34];
+    sprintf(cmd, "cat %s | xclip -selection CLIPBOARD", filename_out);
+    system(cmd);
+    remove(filename_out);
 
     memWipe(decrypted, sizeof(*decrypted) * plaintext_len);
     free(password);
@@ -494,11 +502,11 @@ char *getPassPhrase(const char *prompt)
 
     char *phrase = (char *) malloc(sizeof(*phrase) * PASSWORD_MAX);
     memWipe(phrase, sizeof(*phrase) * PASSWORD_MAX);
-    printf("%s", prompt);
+    fprintf(stderr, "%s", prompt);
     scanf("%s", phrase);
 
     tcsetattr(STDIN_FILENO, TCSANOW, &oldtc);
-    printf("\n");
+    fprintf(stderr, "\n");
     return phrase;
 }
 

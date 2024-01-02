@@ -2,11 +2,12 @@
 Passman 2
 
 # Dependencies
-[libsodium](https://libsodium.org/)
+1. [libsodium](https://libsodium.org/)
+1. [xclip](https://github.com/astrand/xclip)
 
 ## Arch
 ```sh
-sudo pacman -S libsodium
+sudo pacman -S libsodium xclip
 ```
 
 ## Other distros

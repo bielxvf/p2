@@ -46,6 +46,7 @@ void fileWipe(const char *path);
 void mkConfigDir(void);
 char *getConfigPath(void);
 void printDirContents(char *path);
+void printBaseName(char *name);
 char *getPassPhrase(const char *prompt);
 char *getNewPath(const char *path_prefix, const char *name, const char *extension);
 void writeDataToFile(const char *path, const unsigned char *nonce, const size_t nonce_size, const unsigned char *ciphertext, const size_t ciphertext_size);
@@ -86,7 +87,6 @@ int cmdHelp(int argc, const char **argv)
 
 int cmdList(int argc, const char **argv)
 {
-    // TODO: Make it ignore extension
     UNUSED(argv);
 
     if (argc != 1) {
@@ -99,17 +99,18 @@ int cmdList(int argc, const char **argv)
     char *path = getConfigPath();
     DIR *dir = opendir(path);
     struct dirent *entity;
-    size_t i = 0;
     printf("Contents of '%s':\n", path);
+    size_t i = 0;
     while ((entity = readdir(dir)) != NULL) {
         if (strcmp(entity->d_name, ".") != 0 && strcmp(entity->d_name, "..") != 0) {
-            printf("  %s\n", entity->d_name);
+            printBaseName(entity->d_name);
             i++;
         }
     }
     closedir(dir);
     if (i == 0) {
-        printInfo("'%s' looks empty. Create a new password with `p2 new [NAME]`", path);
+        printInfo("'%s' looks empty. Create a new password with `"PROGRAM_NAME" new [NAME]`", path);
+        return 0;
     }
 
     return 0;
@@ -562,4 +563,12 @@ char *getConfigPath(void)
     strcat(config_path, homedir);
     strcat(config_path, "/.config/" PROGRAM_NAME);
     return config_path;
+}
+
+void printBaseName(char *name) {
+    // TODO: Do this in reverse, maybe the name stored has a '.' before the extension and we dont really wanna ignore that
+    for (size_t k = 0; k < strlen(name) && name[k] != '.'; k++) {
+        printf("%c", name[k]);
+    }
+    printf("\n");
 }

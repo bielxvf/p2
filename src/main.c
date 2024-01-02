@@ -566,9 +566,14 @@ char *getConfigPath(void)
 }
 
 void printBaseName(char *name) {
-    // TODO: Do this in reverse, maybe the name stored has a '.' before the extension and we dont really wanna ignore that
-    for (size_t k = 0; k < strlen(name) && name[k] != '.'; k++) {
-        printf("%c", name[k]);
+    size_t k = strlen(name) - 1;
+    while (k > 0 && name[k] != '.') {
+        k--;
+    }
+
+    printf("    ");
+    for (size_t i = 0; i < k; i++) {
+        printf("%c", name[i]);
     }
     printf("\n");
 }

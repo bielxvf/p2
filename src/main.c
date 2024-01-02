@@ -1,5 +1,5 @@
 /*
- * p2 is a rewrite of passman (https://github.com/bielsalamimo/passman)
+ * p2 is a rewrite of passman (https://github.com/bielxvf/passman)
  * Version:  0.1.0
  * Author(s):  Biel Sala , bielsalamimo@gmail.com
  *

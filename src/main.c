@@ -7,7 +7,6 @@
 
 // TODO: Backup subcommand
 // TODO: Restore subcommand
-// TODO: Colors
 
 #define  _POSIX_C_SOURCE 200809L
 
@@ -30,8 +29,8 @@
 #define PASSWORD_MAX 4096
 #define EXTENSION_LOCKED ".locked"
 
-#define ERROR  "[ERROR] "
-#define INFO   "[INFO]  "
+#define ERROR  "\033[31;1;3m[ERROR] \033[0m"
+#define INFO   "\033[36;1;3m[INFO]  \033[0m"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*x))
 #define UNUSED(a)   \
@@ -58,10 +57,10 @@ static const char *const usages[] = {
     "    Commands:\n"
     "        help    Show this help message and exit\n"
     "        list    List passwords\n"
-    "        new [name]    Create a new password\n"
-    "        print [name]    Prints a password\n"
-    "        remove [name]    Removes a password\n"
-    "        copy [name]    Copies a password to clipboard",
+    "        new [NAME]    Create a new password\n"
+    "        print [NAME]    Prints a password\n"
+    "        remove [NAME]    Removes a password\n"
+    "        copy [NAME]    Copies a password to clipboard",
     NULL,
 };
 
@@ -579,9 +578,9 @@ void printBaseName(char *name) {
         k--;
     }
 
-    printf("    ");
+    printf("    \033[94;1;3m");
     for (size_t i = 0; i < k; i++) {
         printf("%c", name[i]);
     }
-    printf("\n");
+    printf("\033[0m\n");
 }

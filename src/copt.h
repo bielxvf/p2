@@ -34,6 +34,13 @@ void copt_print_version();
 
 void _copt_option_print(const copt_Option *opt);
 
+#endif // COPT_H
+
+
+
+
+#ifdef COPT_IMPLEMENTATION
+
 static copt_Program program = {0};
 
 void copt_program_init(const char *name, const char *version, const char *usage)
@@ -49,19 +56,20 @@ void copt_add_option(const char *optname, const char *s, const char *l,
 {
 	size_t Option_size = sizeof(copt_Option);
 
-	copt_Option opt = {.name = optname,
-			   .s = s,
-			   .l = l,
-			   .usage = usage,
-			   .params = params};
+	copt_Option opt = {
+        .name = optname,
+        .s = s,
+        .l = l,
+        .usage = usage,
+        .params = params
+    };
 
 	if (program.options_size == 0) {
 		program.options_size++;
 		program.options = malloc(Option_size * program.options_size);
 	} else {
 		program.options_size++;
-		program.options = reallocarray(
-			program.options, program.options_size, Option_size);
+		program.options = reallocarray(program.options, program.options_size, Option_size);
 	}
 	program.options[program.options_size - 1] = opt;
 }
@@ -109,4 +117,4 @@ void _copt_option_print(const copt_Option *opt)
     fprintf(stderr, "--> %s\n", opt->usage);
 }
 
-#endif // COPT_H
+#endif // COPT_IMPLEMENTATION

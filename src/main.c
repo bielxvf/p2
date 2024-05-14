@@ -1,6 +1,7 @@
 // TODO: Backup subcommand
 // TODO: Restore subcommand
 
+#define COPT_IMPLEMENTATION
 #include "./copt.h"
 
 #include "./p2.h"

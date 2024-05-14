@@ -62,7 +62,6 @@ void printInfo(const char *fmt, ...)
     va_start(ap, fmt);
     fprintf(stderr, INFO);
     vfprintf(stderr, fmt, ap);
-    fprintf(stderr, "\n");
     va_end(ap);
 }
 
@@ -89,7 +88,7 @@ void mkConfigDir()
     char *config_path = getConfigPath();
 
     if (stat(config_path, &st) == -1) {
-        printInfo("'%s' does not exist, creating new", config_path);
+        printInfo("'%s' does not exist, creating new\n", config_path);
         mkdir(config_path, 0700);
     }
 }
@@ -106,7 +105,7 @@ char *getPassPhrase(const char *prompt)
     char *phrase = (char *) malloc(sizeof(*phrase) * PASSWORD_MAX);
     memWipe(phrase, sizeof(*phrase) * PASSWORD_MAX);
     fprintf(stderr, "%s", prompt);
-    scanf("%s", phrase);
+    (void)!scanf("%s", phrase);
 
     tcsetattr(STDIN_FILENO, TCSANOW, &oldtc);
     fprintf(stderr, "\n");
@@ -240,7 +239,7 @@ int cmdList(const int argc, const char **argv)
     }
     closedir(dir);
     if (i == 0) {
-        printInfo("'%s' looks empty. Create a new password with `%s new [NAME]`", path, program.name);
+        printInfo("'%s' looks empty. Create a new password with `%s new [NAME]`\n", path, program.name);
         return 0;
     }
 
@@ -329,14 +328,14 @@ int cmdPrint(const int argc, const char **argv)
     FILE *fptr;
     fptr = fopen(print_path, "r");
     char *str_nonce = (char *) malloc(nonce_size);
-    getline(&str_nonce, &line_len, fptr);
+    (void)!getline(&str_nonce, &line_len, fptr);
 
-    getline(&line, &line_len, fptr);
+    (void)!getline(&line, &line_len, fptr);
     ciphertext_size = strtol(line, NULL, 10);
     size_t plaintext_len = ciphertext_size - crypto_secretbox_MACBYTES;
 
     char *str_ciphertext = (char *) malloc(sizeof(*str_ciphertext) * PASSWORD_MAX);
-    getline(&str_ciphertext, &line_len, fptr);
+    (void)!getline(&str_ciphertext, &line_len, fptr);
     fclose(fptr);
 
     unsigned char *nonce = (unsigned char *) malloc(nonce_size);
@@ -411,8 +410,8 @@ int cmdDelete(const int argc, const char **argv)
         return 1;
     }
 
-    printf(ITALIC_BOLD_BLUE "Are you sure you want to remove '%s'?\n", remove_path);
-    printf("You will not be able to recover the data. Remove? [y/N] ");
+    printInfo("Are you sure you want to remove '%s'?\n", remove_path);
+    printInfo("You will not be able to recover the data. Remove? [y/N] ");
     char a = '\0';
     a = getchar();
     if (a != 'y' && a != 'Y') {
@@ -422,7 +421,7 @@ int cmdDelete(const int argc, const char **argv)
 
     fileWipe(remove_path);
     remove(remove_path);
-    printf("Removed file: '%s'\n", remove_path);
+    printInfo("Removed file: '%s'\n", remove_path);
 
     return 0;
 }
@@ -454,14 +453,14 @@ int cmdCopy(const int argc, const char **argv)
     FILE *fptr;
     fptr = fopen(copy_path, "r");
     char *str_nonce = (char *) malloc(nonce_size);
-    getline(&str_nonce, &line_len, fptr);
+    (void)!getline(&str_nonce, &line_len, fptr);
 
-    getline(&line, &line_len, fptr);
+    (void)!getline(&line, &line_len, fptr);
     ciphertext_size = strtol(line, NULL, 10);
     size_t plaintext_len = ciphertext_size - crypto_secretbox_MACBYTES;
 
     char *str_ciphertext = (char *) malloc(sizeof(*str_ciphertext) * PASSWORD_MAX);
-    getline(&str_ciphertext, &line_len, fptr);
+    (void)!getline(&str_ciphertext, &line_len, fptr);
     fclose(fptr);
 
     unsigned char *nonce = (unsigned char *) malloc(nonce_size);
@@ -515,7 +514,7 @@ int cmdCopy(const int argc, const char **argv)
     fclose(file_out);
     char cmd[strlen(filename_out) + 34];
     sprintf(cmd, "cat %s | xclip -selection CLIPBOARD", filename_out);
-    system(cmd);
+    (void)!system(cmd);
     remove(filename_out);
 
     memWipe(decrypted, sizeof(*decrypted) * plaintext_len);

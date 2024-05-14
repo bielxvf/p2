@@ -43,8 +43,7 @@ int main(const int argc, const char **argv)
     } else if (copt_option_is("COPY", argc, argv)) {
         return cmdCopy(argc, argv);
     } else if (copt_option_is("RENAME", argc, argv)) {
-        // TODO
-        // return cmdRename(argc, argv);
+        return cmdRename(argc, argv);
     } else if (copt_option_is("BACKUP", argc, argv)) {
         // TODO
         // return cmdBackup(argc, argv);

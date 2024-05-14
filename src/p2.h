@@ -1,15 +1,14 @@
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sodium.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/time.h>
 #include <dirent.h>
 #include <termios.h>
-#include <unistd.h>
-#include <string.h>
 #include <pwd.h>
 #include <unistd.h>
+#include <errno.h>
 
 #define PASSWORD_MAX 4096
 #define EXTENSION_LOCKED ".locked"
@@ -34,6 +33,15 @@ char *getPassPhrase(const char *prompt);
 char *getNewPath(const char *path_prefix, const char *name, const char *extension);
 void writeDataToFile(const char *path, const unsigned char *nonce, const size_t nonce_size, const unsigned char *ciphertext, const size_t ciphertext_size);
 void readHexFromStr(unsigned char *hex_arr, const long int hex_arr_size, const char *str);
+
+int cmdHelp(const int argc, const char **argv);
+int cmdVersion(const int argc, const char **argv);
+int cmdList(const int argc, const char **argv);
+int cmdNew(const int argc, const char **argv);
+int cmdPrint(const int argc, const char **argv);
+int cmdDelete(const int argc, const char **argv);
+int cmdCopy(const int argc, const char **argv);
+int cmdRename(const int argc, const char **argv);
 
 void printError(const char *fmt, ...)
 {
@@ -184,10 +192,10 @@ int cmdHelp(const int argc, const char **argv)
     UNUSED(argv);
 
     if (argc != 2 && argc != 1) {
-        printError("Incorrect arguments for subcommand 'help'");
+        printError("Incorrect arguments for subcommand 'HELP'");
         return 1;
     }
-    
+
     copt_print_help();
     return 1;
 }
@@ -197,10 +205,10 @@ int cmdVersion(const int argc, const char **argv)
     UNUSED(argv);
 
     if (argc != 2) {
-        printError("Incorrect arguments for subcommand 'version'");
+        printError("Incorrect arguments for subcommand 'VERSION'");
         return 1;
     }
-    
+
     copt_print_version();
     return 0;
 }
@@ -210,7 +218,7 @@ int cmdList(const int argc, const char **argv)
     UNUSED(argv);
 
     if (argc != 2) {
-        printError("Incorrect arguments for subcommand 'list'");
+        printError("Incorrect arguments for subcommand 'LIST'");
         return 1;
     }
 
@@ -240,7 +248,7 @@ int cmdNew(const int argc, const char **argv)
 {
 
     if (argc != 3) {
-        printError("Incorrect arguments for subcommand 'new'");
+        printError("Incorrect arguments for subcommand 'NEW'");
         return 1;
     }
     mkConfigDir();
@@ -295,7 +303,7 @@ int cmdNew(const int argc, const char **argv)
 int cmdPrint(const int argc, const char **argv)
 {
     if (argc != 3) {
-        printError("Incorrect arguments for subcommand 'print'");
+        printError("Incorrect arguments for subcommand 'PRINT'");
         return 1;
     }
 
@@ -388,7 +396,7 @@ int cmdPrint(const int argc, const char **argv)
 int cmdDelete(const int argc, const char **argv)
 {
     if (argc != 3) {
-        printError("Incorrect arguments for subcommand 'delete'");
+        printError("Incorrect arguments for subcommand 'DELETE'");
         return 1;
     }
 
@@ -413,7 +421,7 @@ int cmdDelete(const int argc, const char **argv)
 int cmdCopy(const int argc, const char **argv)
 {
     if (argc != 3) {
-        printError("Incorrect arguments for subcommand 'copy'");
+        printError("Incorrect arguments for subcommand 'COPY'");
         return 1;
     }
 
@@ -509,5 +517,35 @@ int cmdCopy(const int argc, const char **argv)
     free(str_nonce);
     free(str_ciphertext);
     free(nonce);
+    return 0;
+}
+
+int cmdRename(const int argc, const char **argv)
+{
+    if (argc != 4) {
+        printError("Incorrect arguments for subcommand 'RENAME'");
+        return 1;
+    }
+
+    char *rename_path = getNewPath(getConfigPath(), argv[2], EXTENSION_LOCKED);
+    struct stat st;
+    if (stat(rename_path, &st)) {
+        printError("Invalid name: '%s'. File '%s' does not exist", argv[2], rename_path);
+        free(rename_path);
+        return 1;
+    }
+
+    char *new_path = getNewPath(getConfigPath(), argv[3], EXTENSION_LOCKED);
+    if (!stat(new_path, &st)) {
+        printError("Invalid name: '%s'. File '%s' already exists", argv[3], new_path);
+        free(new_path);
+        return 1;
+    }
+
+    if (rename(rename_path, new_path)) {
+        printError("%s", strerror(errno));
+        return 1;
+    }
+
     return 0;
 }

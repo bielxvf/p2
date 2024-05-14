@@ -1,6 +1,6 @@
 SRC = src/main.c
 BIN = p2
-CFLAGS = -Wall -Wextra -Wpedantic -O3 -lsodium
+CFLAGS = -Wall -Wextra -Wpedantic -O3 -lsodium -ltar
 
 build:
 	mkdir build

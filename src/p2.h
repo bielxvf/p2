@@ -9,6 +9,11 @@
 #include <pwd.h>
 #include <unistd.h>
 #include <errno.h>
+#include <libtar.h>
+#include <fcntl.h>
+
+#define COPT_IMPLEMENTATION
+#include "./copt.h"
 
 #define PASSWORD_MAX 4096
 #define EXTENSION_LOCKED ".locked"
@@ -551,6 +556,33 @@ int cmdRename(const int argc, const char **argv)
 
     if (rename(rename_path, new_path)) {
         printError("%s", strerror(errno));
+        return 1;
+    }
+
+    return 0;
+}
+
+int cmdBackup(const int argc, const char **argv)
+{
+    if (argc != 3) {
+        printError("Incorrect arguments for subcommand 'BACKUP'");
+        return 1;
+    }
+
+    TAR *ptar;
+    char *program_name = (char *)program.name;
+    tar_open(&ptar, argv[2], NULL, O_WRONLY | O_CREAT, 0644, TAR_GNU);
+    tar_append_tree(ptar, getConfigPath(), program_name);
+    tar_append_eof(ptar);
+    tar_close(ptar);
+
+    return 0;
+}
+
+int cmdRestore(const int argc, const char **argv)
+{
+    if (argc != 3) {
+        printError("Incorrect arguments for subcommand 'RESTORE'");
         return 1;
     }
 

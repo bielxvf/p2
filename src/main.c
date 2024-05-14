@@ -1,14 +1,10 @@
 // TODO: Backup subcommand
 // TODO: Restore subcommand
 
-#define COPT_IMPLEMENTATION
-#include "./copt.h"
-
 #include "./p2.h"
 
 int main(const int argc, const char **argv)
 {
-
 	copt_program_init("p2", "0.2.0", "[OPTION] [ARGS...]");
 
 	copt_add_option("HELP", "h", "help", "Print help message", "");
@@ -25,6 +21,7 @@ int main(const int argc, const char **argv)
 			"[NAME] [NEW NAME]");
 	copt_add_option("BACKUP", "b", "backup",
 			"Backup password directory into a .tar", "[OUTPUT]");
+    copt_add_option("RESTORE", "rs", "restore", "Restore passwords from .tar backup", "[BACKUP FILE]");
 
     if (argc < 2) {
         printError("No subcommand given");
@@ -46,8 +43,10 @@ int main(const int argc, const char **argv)
     } else if (copt_option_is("RENAME", argc, argv)) {
         return cmdRename(argc, argv);
     } else if (copt_option_is("BACKUP", argc, argv)) {
-        // TODO
-        // return cmdBackup(argc, argv);
+        return cmdBackup(argc, argv);
+    } else if (copt_option_is("RESTORE", argc, argv)) {
+        //TODO
+        // return cmdRestore(argc, argv);
     } else {
         printError("Unrecognised subcommand");
         return cmdHelp(argc, argv);

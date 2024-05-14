@@ -16,6 +16,9 @@
 #define ERROR  "\033[31;1;3m[ERROR] \033[0m"
 #define INFO   "\033[36;1;3m[INFO]  \033[0m"
 
+#define ITALIC_BOLD_BLUE "\033[94;1;3m"
+#define COLOR_RESET "\033[0m"
+
 #define UNUSED(a)   \
     do {            \
         (void) (a); \
@@ -180,11 +183,11 @@ void printBaseName(char *name) {
         k--;
     }
 
-    printf("    \033[94;1;3m");
+    printf("\t"ITALIC_BOLD_BLUE);
     for (size_t i = 0; i < k; i++) {
         printf("%c", name[i]);
     }
-    printf("\033[0m\n");
+    printf("\n"COLOR_RESET);
 }
 
 int cmdHelp(const int argc, const char **argv)
@@ -246,17 +249,16 @@ int cmdList(const int argc, const char **argv)
 
 int cmdNew(const int argc, const char **argv)
 {
-
     if (argc != 3) {
         printError("Incorrect arguments for subcommand 'NEW'");
         return 1;
     }
+
     mkConfigDir();
 
     char *new_path = getNewPath(getConfigPath(), argv[2], EXTENSION_LOCKED);
-
     struct stat st;
-    if (stat(new_path, &st) == 0) {
+    if (!stat(new_path, &st)) {
         printError("Invalid name: '%s'. File '%s' already exists", argv[2], new_path);
         free(new_path);
         return 1;
@@ -310,9 +312,8 @@ int cmdPrint(const int argc, const char **argv)
     mkConfigDir();
 
     char *print_path = getNewPath(getConfigPath(), argv[2], EXTENSION_LOCKED);
-
     struct stat st;
-    if (stat(print_path, &st) != 0) {
+    if (stat(print_path, &st)) {
         printError("Invalid name: '%s'. File '%s' does not exist", argv[2], print_path);
         free(print_path);
         return 1;
@@ -338,7 +339,7 @@ int cmdPrint(const int argc, const char **argv)
     getline(&str_ciphertext, &line_len, fptr);
     fclose(fptr);
 
-    unsigned char *nonce      = (unsigned char *) malloc(nonce_size);
+    unsigned char *nonce = (unsigned char *) malloc(nonce_size);
     unsigned char *ciphertext = (unsigned char *) malloc(ciphertext_size);
 
     readHexFromStr(nonce, nonce_size, str_nonce);
@@ -403,17 +404,25 @@ int cmdDelete(const int argc, const char **argv)
     mkConfigDir();
 
     char *remove_path = getNewPath(getConfigPath(), argv[2], EXTENSION_LOCKED);
-
     struct stat st;
-    if (stat(remove_path, &st) != 0) {
+    if (stat(remove_path, &st)) {
         printError("Invalid name: '%s'. File '%s' does not exist", argv[2], remove_path);
         free(remove_path);
         return 1;
-    } else {
-        fileWipe(remove_path);
-        remove(remove_path);
-        printf("Removed file: '%s'\n", remove_path);
     }
+
+    printf(ITALIC_BOLD_BLUE "Are you sure you want to remove '%s'?\n", remove_path);
+    printf("You will not be able to recover the data. Remove? [y/N] ");
+    char a = '\0';
+    a = getchar();
+    if (a != 'y' && a != 'Y') {
+        printError("Aborting deletion");
+        return 1;
+    }
+
+    fileWipe(remove_path);
+    remove(remove_path);
+    printf("Removed file: '%s'\n", remove_path);
 
     return 0;
 }
@@ -428,9 +437,8 @@ int cmdCopy(const int argc, const char **argv)
     mkConfigDir();
 
     char *copy_path = getNewPath(getConfigPath(), argv[2], EXTENSION_LOCKED);
-
     struct stat st;
-    if (stat(copy_path, &st) != 0) {
+    if (stat(copy_path, &st)) {
         printError("Invalid name: '%s'. File '%s' does not exist", argv[2], copy_path);
         free(copy_path);
         return 1;
@@ -456,7 +464,7 @@ int cmdCopy(const int argc, const char **argv)
     getline(&str_ciphertext, &line_len, fptr);
     fclose(fptr);
 
-    unsigned char *nonce      = (unsigned char *) malloc(nonce_size);
+    unsigned char *nonce = (unsigned char *) malloc(nonce_size);
     unsigned char *ciphertext = (unsigned char *) malloc(ciphertext_size);
 
     readHexFromStr(nonce, nonce_size, str_nonce);
